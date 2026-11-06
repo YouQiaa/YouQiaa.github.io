@@ -362,6 +362,7 @@
       return activeTag === "all" || pet.tags.indexOf(activeTag) !== -1;
     });
   }
+
   function updateVisibility() {
     const list = visiblePets();
     const ids = list.map(function (p) { return p.id; });
