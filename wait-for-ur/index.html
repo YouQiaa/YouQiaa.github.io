@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wait For UR · 等一个家</title>
+<meta name="description" content="Wait For UR 是一个讲清楚「它们现在怎么样了」的宠物领养数据叙事站。先看整体领养情况，再遇见具体的那一只。">
+<meta name="theme-color" content="#F6F3EA">
+<meta property="og:title" content="Wait For UR · 等一个家">
+<meta property="og:description" content="它们不是在被挑选，是在等你。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/pets/mashu.svg">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("wfu-theme");
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  })();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="brand" href="#top" aria-label="Wait For UR 首页">
+      <svg class="brand__paw" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="7" cy="6.6" r="2.3"></circle>
+        <circle cx="12" cy="5" r="2.3"></circle>
+        <circle cx="17" cy="6.6" r="2.3"></circle>
+        <path d="M12 10.6c3.2 0 5.9 2.2 5.9 4.8 0 2.6-2.4 4.9-5.9 4.9s-5.9-2.3-5.9-4.9c0-2.6 2.7-4.8 5.9-4.8Z"></path>
+      </svg>
+      <span class="brand__name">Wait For UR</span>
+      <span class="brand__cn">等一个家</span>
+    </a>
+
+    <nav class="nav" aria-label="主导航">
+      <a href="#data">看情况</a>
+      <a href="#pets">找伙伴</a>
+      <a href="#adopt">怎么领养</a>
+    </nav>
+
+    <div class="topbar__actions">
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="切换到夜间模式" aria-pressed="false">
+        <span class="theme-toggle__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"></path></svg>
+        </span>
+        <span class="theme-toggle__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M20 14.2A8.3 8.3 0 0 1 9.8 4 8.4 8.4 0 1 0 20 14.2Z"></path></svg>
+        </span>
+        <span class="theme-toggle__knob" aria-hidden="true"></span>
+      </button>
+      <a class="btn btn--coral topbar__cta" href="#adopt">
+        我想领养
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" id="top">
+    <div class="wrap hero__inner">
+      <div class="hero__copy">
+        <p class="hero__eyebrow">
+          <span class="hero__en">Wait For UR</span>
+          <span class="hero__sep" aria-hidden="true">/</span>
+          <span>一个不推销的领养站</span>
+        </p>
+
+        <h1 class="hero__title">
+          <span class="hero__line">它们不是</span>
+          <span class="hero__line">在被挑选，</span>
+          <span class="hero__line">是在<span class="mark">等你</span>。</span>
+        </h1>
+
+        <p class="hero__sub">Wait For UR，等一个会记得添水、也愿意陪它发呆的人。</p>
+
+        <div class="hero__cta-row">
+          <a class="btn btn--coral" href="#data">
+            先看看现在的情况
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v13M6 13l6 6 6-6"></path></svg>
+          </a>
+          <span class="hand hero__hint">先看数据，再决定要不要心动</span>
+        </div>
+
+        <p class="hero__meta">
+          <span>示例数据 · 18 座城市</span>
+          <span class="dot-sep" aria-hidden="true"></span>
+          <span>今天，有 5 位还在等</span>
+        </p>
+      </div>
+
+      <aside class="hero-card" aria-labelledby="hero-card-name">
+        <span class="sticker sticker--purple hero-card__badge">今日主角</span>
+        <div class="hero-card__media">
+          <img src="assets/pets/mashu.svg" width="900" height="1080"
+               alt="三岁的橘白猫麻薯坐在客厅的奶油色沙发上" fetchpriority="high" decoding="async">
+        </div>
+        <div class="hero-card__body">
+          <h2 class="hero-card__name" id="hero-card-name">麻薯 <span>三岁 · 橘白</span></h2>
+          <p class="hero-card__quote">“我不太会看镜头，但很会等你在沙发上坐下来。”</p>
+          <div class="hero-card__tags">
+            <span class="pill">杭州</span>
+            <span class="pill">安静派</span>
+            <span class="pill">黏人精</span>
+          </div>
+          <div class="hero-card__foot">
+            <span class="status status--waiting">等待中 · 第 87 天</span>
+            <a class="textlink" href="#pets">去看看它
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+            </a>
+          </div>
+        </div>
+        <span class="hand hero-card__note" aria-hidden="true">
+          它真的会等。
+          <svg class="hero-card__arrow" viewBox="0 0 60 40" focusable="false"><path d="M4 6c14 2 30 8 38 24M38 24l-9-1M38 24l2-9"></path></svg>
+        </span>
+      </aside>
+    </div>
+
+    <div class="ticker" aria-label="最近动态">
+      <div class="ticker__label"><span class="ticker__dot" aria-hidden="true"></span>正在发生</div>
+      <div class="ticker__viewport">
+        <div class="ticker__track">
+          <span class="ticker__item"><b>刚刚</b> · 杭州 · 橘座 已回家</span>
+          <span class="ticker__item"><b>3 分钟前</b> · 上海 · 豆瓣 收到一份领养申请</span>
+          <span class="ticker__item"><b>12 分钟前</b> · 武汉 · 阿福 有人来探访</span>
+          <span class="ticker__item"><b>26 分钟前</b> · 广州 · 七喜 进入见面环节</span>
+          <span class="ticker__item"><b>1 小时前</b> · 北京 · 小满 被摸了摸 12 次</span>
+          <span class="ticker__item"><b>昨天</b> · 成都 · 一只三花猫 已回家</span>
+          <span class="ticker__item" aria-hidden="true"><b>刚刚</b> · 杭州 · 橘座 已回家</span>
+          <span class="ticker__item" aria-hidden="true"><b>3 分钟前</b> · 上海 · 豆瓣 收到一份领养申请</span>
+          <span class="ticker__item" aria-hidden="true"><b>12 分钟前</b> · 武汉 · 阿福 有人来探访</span>
+          <span class="ticker__item" aria-hidden="true"><b>26 分钟前</b> · 广州 · 七喜 进入见面环节</span>
+          <span class="ticker__item" aria-hidden="true"><b>1 小时前</b> · 北京 · 小满 被摸了摸 12 次</span>
+          <span class="ticker__item" aria-hidden="true"><b>昨天</b> · 成都 · 一只三花猫 已回家</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section data" id="data">
+    <div class="wrap">
+      <header class="sec-head">
+        <span class="eyebrow"><b>01</b> 现在的情况</span>
+        <h2>每一个数字背后，<br>都是一个正在空着的位置。</h2>
+        <p class="lead">先把整体情况说清楚，再谈具体的某一只。数据来自合作救助站的联合统计，把它放在情绪之后、相遇之前。</p>
+      </header>
+
+      <div class="stats">
+        <article class="stat stat--coral reveal">
+          <span class="stat__label">待领养</span>
+          <div class="stat__number"><span data-count="128">0</span><span class="stat__unit">只</span></div>
+          <p class="stat__note">分布在 18 座城市</p>
+          <span class="sticker stat__sticker" aria-hidden="true">还在等</span>
+        </article>
+        <article class="stat stat--lime reveal">
+          <span class="stat__label">本月已回家</span>
+          <div class="stat__number"><span data-count="34">0</span><span class="stat__unit">只</span></div>
+          <p class="stat__note">比上月多 4 只</p>
+          <span class="sticker stat__sticker" aria-hidden="true">好日子</span>
+        </article>
+        <article class="stat reveal">
+          <span class="stat__label">平均等待天数</span>
+          <div class="stat__number"><span data-count="96">0</span><span class="stat__unit">天</span></div>
+          <p class="stat__note">比去年少 11 天</p>
+          <span class="sticker sticker--purple stat__sticker" aria-hidden="true">慢一点</span>
+        </article>
+        <article class="stat reveal">
+          <span class="stat__label">覆盖城市</span>
+          <div class="stat__number"><span data-count="18">0</span><span class="stat__unit">座</span></div>
+          <p class="stat__note">今年新增 2 座</p>
+          <span class="sticker stat__sticker" aria-hidden="true">还在扩</span>
+        </article>
+      </div>
+
+      <div class="data-grid">
+        <article class="panel chart-panel reveal">
+          <header class="panel__head">
+            <h3>过去 12 个月，回家的数量</h3>
+            <span class="panel__meta">2025.12 — 2026.11 · 单位：只</span>
+          </header>
+
+          <div class="chart" role="group" aria-label="过去十二个月每月回家的数量依次为：18、22、15、27、31、24、36、29、41、33、38、34 只。">
+            <div class="chart__bars">
+              <div class="bar" role="img" style="--h:44%;--d:0ms" tabindex="0" aria-label="2025 年 12 月，18 只"><span class="bar__tip">18 只</span></div>
+              <div class="bar" role="img" style="--h:54%;--d:40ms" tabindex="0" aria-label="2026 年 1 月，22 只"><span class="bar__tip">22 只</span></div>
+              <div class="bar" role="img" style="--h:37%;--d:80ms" tabindex="0" aria-label="2026 年 2 月，15 只"><span class="bar__tip">15 只</span></div>
+              <div class="bar" role="img" style="--h:66%;--d:120ms" tabindex="0" aria-label="2026 年 3 月，27 只"><span class="bar__tip">27 只</span></div>
+              <div class="bar" role="img" style="--h:76%;--d:160ms" tabindex="0" aria-label="2026 年 4 月，31 只"><span class="bar__tip">31 只</span></div>
+              <div class="bar" role="img" style="--h:59%;--d:200ms" tabindex="0" aria-label="2026 年 5 月，24 只"><span class="bar__tip">24 只</span></div>
+              <div class="bar" role="img" style="--h:88%;--d:240ms" tabindex="0" aria-label="2026 年 6 月，36 只"><span class="bar__tip">36 只</span></div>
+              <div class="bar" role="img" style="--h:71%;--d:280ms" tabindex="0" aria-label="2026 年 7 月，29 只"><span class="bar__tip">29 只</span></div>
+              <div class="bar" role="img" style="--h:100%;--d:320ms" tabindex="0" aria-label="2026 年 8 月，41 只"><span class="bar__tip">41 只</span></div>
+              <div class="bar" role="img" style="--h:80%;--d:360ms" tabindex="0" aria-label="2026 年 9 月，33 只"><span class="bar__tip">33 只</span></div>
+              <div class="bar" role="img" style="--h:93%;--d:400ms" tabindex="0" aria-label="2026 年 10 月，38 只"><span class="bar__tip">38 只</span></div>
+              <div class="bar bar--now" role="img" style="--h:83%;--d:440ms" tabindex="0" aria-label="2026 年 11 月（本月），34 只"><span class="bar__tip">34 只 · 本月</span></div>
+            </div>
+            <div class="chart__axis" aria-hidden="true">
+              <span>12</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span>
+            </div>
+          </div>
+
+          <p class="panel__foot">方块越高，那个月回家的孩子越多。最后一格是本月。</p>
+        </article>
+
+        <article class="panel ring-panel reveal">
+          <header class="panel__head">
+            <h3>本月回家进度</h3>
+            <span class="sticker sticker--purple panel__sticker" aria-hidden="true">这个月</span>
+          </header>
+          <div class="ring">
+            <svg class="ring__svg" viewBox="0 0 140 140" role="img" aria-label="本月已回家 34 只，目标 45 只，完成约 76%。">
+              <circle class="ring__track" cx="70" cy="70" r="56"></circle>
+              <circle class="ring__value" cx="70" cy="70" r="56"></circle>
+            </svg>
+            <div class="ring__center" aria-hidden="true">
+              <span class="ring__pct"><span data-count="76">0</span>%</span>
+              <span class="ring__sub">34 / 45</span>
+            </div>
+          </div>
+          <p class="ring-panel__note">距离本月目标，还差 <b>11</b> 个位置。</p>
+        </article>
+      </div>
+
+      <p class="source-note">
+        <span class="tag tag--lime">示例数据</span>
+        数字用于展示站点结构与可视化方式，正式上线前将接入救助站联合统计接口。口径：猫、狗、兔等伴侣动物，由 18 家救助站按月汇总。更新于 2026 年 11 月 6 日。
+      </p>
+    </div>
+  </section>
+
+  <section class="section pets" id="pets">
+    <div class="wrap">
+      <header class="sec-head">        <span class="eyebrow"><b>02</b> 找伙伴</span>
+        <h2>先看谁和你合拍，<br>而不是谁更好看。</h2>
+        <p class="lead">不按品种挑，按生活方式挑。每张卡片都是它们自己说的话，参数藏在「展开看详情」里。</p>
+      </header>
+
+      <div class="pet-tools">
+        <div class="chips" role="group" aria-label="按性格与生活方式筛选">
+          <button class="chip" type="button" data-tag="all" aria-pressed="true">全部</button>
+          <button class="chip" type="button" data-tag="社牛" aria-pressed="false">社牛</button>
+          <button class="chip" type="button" data-tag="安静派" aria-pressed="false">安静派</button>
+          <button class="chip" type="button" data-tag="黏人精" aria-pressed="false">黏人精</button>
+          <button class="chip" type="button" data-tag="运动型" aria-pressed="false">运动型</button>
+          <button class="chip" type="button" data-tag="适合新手" aria-pressed="false">适合新手</button>
+          <button class="chip" type="button" data-tag="公寓友好" aria-pressed="false">公寓友好</button>
+        </div>
+
+        <div class="view-toggle" role="group" aria-label="切换查看方式">
+          <button class="view-toggle__btn" type="button" data-view="list" aria-pressed="true">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            列表
+          </button>
+          <button class="view-toggle__btn" type="button" data-view="map" aria-pressed="false">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
+            地图
+          </button>
+        </div>
+      </div>
+
+      <p class="result-line" aria-live="polite"><span id="resultCount">正在加载…</span></p>
+
+      <div class="pets-list" id="petsList">
+        <div class="pets-grid" id="petsGrid"></div>
+        <p class="empty" id="emptyState" hidden>这个组合暂时没有匹配的伙伴，换一个维度试试？</p>
+      </div>
+
+      <div class="map-view" id="mapView" hidden>
+        <div class="map-stage">
+          <div class="map-stage__head">
+            <h3>城市分布</h3>
+            <span>点一个圆点，看看它在哪</span>
+          </div>
+          <svg class="pet-map" id="petMap" viewBox="0 0 1000 700" role="img" aria-label="六座城市里等待领养的宠物分布示意地图">
+            <defs>
+              <pattern id="mapDotsBg" width="28" height="28" patternUnits="userSpaceOnUse">
+                <circle cx="4" cy="4" r="1.6"></circle>
+              </pattern>
+            </defs>
+            <rect class="map-bg" x="0" y="0" width="1000" height="700"></rect>
+            <path class="map-land" d="M170 196 L205 168 L245 150 L285 162 L330 148 L372 158 L415 145 L460 152 L500 160 L540 150 L585 168 L625 182 L668 168 L700 145 L745 130 L790 112 L845 92 L892 80 L918 104 L906 140 L888 178 L862 214 L840 246 L812 268 L792 290 L806 312 L828 326 L800 336 L775 352 L758 378 L748 402 L742 424 L736 446 L726 470 L712 492 L694 512 L674 530 L658 548 L642 562 L622 570 L606 588 L588 594 L570 582 L556 566 L538 558 L520 544 L505 528 L488 516 L470 500 L452 488 L436 476 L418 468 L398 462 L378 458 L356 452 L334 444 L312 436 L290 424 L268 410 L246 396 L224 378 L204 358 L186 336 L170 312 L158 286 L152 258 L160 230 L166 210 Z"></path>
+            <ellipse class="map-island" cx="721" cy="530" rx="13" ry="24" transform="rotate(14 721 530)"></ellipse>
+            <ellipse class="map-island" cx="586" cy="614" rx="20" ry="14" transform="rotate(-14 586 614)"></ellipse>
+            <g class="map-dots" id="mapDots"></g>
+          </svg>
+          <p class="map-disclaimer">示意图，非精确地图 · 位置按城市标注</p>
+          <ul class="map-legend">
+            <li><span class="dot dot--coral" aria-hidden="true"></span>等待中</li>
+            <li><span class="dot dot--purple" aria-hidden="true"></span>见面中</li>
+            <li><span class="dot dot--ink" aria-hidden="true"></span>已回家</li>
+          </ul>
+        </div>
+        <aside class="map-info" id="mapInfo" aria-live="polite">
+          <span class="hand map-info__hint">每颗点，都是一只在等。</span>
+          <p class="map-info__default">点左边的圆点，就能看到它在哪座城市、等了多久。</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="section adopt" id="adopt">
+    <div class="wrap">
+      <header class="sec-head">
+        <span class="eyebrow"><b>03</b> 怎么领养</span>
+        <h2>四步，不快，<br>但每一步都算数。</h2>
+        <p class="lead">领养不是把它带回家就结束了。下面这条线，是它从「等待」到「回家」的完整路径。</p>
+      </header>
+
+      <div class="adopt-grid">
+        <div class="timeline reveal">
+          <div class="step">
+            <span class="step__num">01</span>
+            <div class="step__body">
+              <h3>提交申请</h3>
+              <p>写下你的作息、住处，还有为什么想养。我们更关心你能不能长期负责。</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step__num">02</span>
+            <div class="step__body">
+              <h3>线下见面</h3>
+              <p>来救助站坐一会儿。让它在熟悉的地方先闻闻你，而不是先被你抱起来。</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step__num">03</span>
+            <div class="step__body">
+              <h3>试养期</h3>
+              <p>7–14 天带回家试住。不合适就送回，这不算失败，是对彼此负责。</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step__num">04</span>
+            <div class="step__body">
+              <h3>正式回家</h3>
+              <p>签领养协议、定期回访、交接绝育与疫苗记录。然后慢慢过日子。</p>
+            </div>
+          </div>
+        </div>
+
+        <aside class="reverse-card reveal">
+          <span class="sticker sticker--purple reverse-card__badge">真心话</span>
+          <h3>先别急着心动。</h3>
+          <p class="reverse-card__lead">喜欢是一秒的事，照顾是好几年的事。</p>
+          <div class="q">
+            <span class="q__mark">Q1</span>
+            <div>
+              <h4>时间</h4>
+              <p>每天至少 1 小时，且未来 10 年都愿意？</p>
+            </div>
+          </div>
+          <div class="q">
+            <span class="q__mark">Q2</span>
+            <div>
+              <h4>预算</h4>
+              <p>粮、疫苗、看病的钱，你算过吗？</p>
+            </div>
+          </div>
+          <div class="q">
+            <span class="q__mark">Q3</span>
+            <div>
+              <h4>家人</h4>
+              <p>同住的人，真的都同意吗？</p>
+            </div>
+          </div>
+          <p class="reverse-card__foot">三个问题里有一个答不上来，就先别申请。这不是拒绝你，是对它负责。</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p class="hand foot__kicker">Wait For UR · 等一个家</p>
+    <h2 class="foot__title">等一个家，<br>也等一个准备好的人。</h2>
+
+    <div class="foot-grid">
+      <div>
+        <h3>示例合作救助站</h3>
+        <ul class="foot-partners">
+          <li>杭州小院</li>
+          <li>成都毛孩子之家</li>
+          <li>上海领养日</li>
+          <li>武汉流浪动物救助站</li>
+          <li>广州阿派</li>
+          <li>北京幸运土猫</li>
+        </ul>
+      </div>
+      <div>
+        <h3>关于数据</h3>
+        <p>本站当前全部为示例数据，用于展示「先看整体、再遇见具体」的叙事结构，不代表任何机构的真实统计。正式版本将接入救助站联合统计接口，字段包含编号、昵称、城市、性格标签、状态、等待天数、救助站、照片与一句话自述。</p>
+      </div>
+      <div>
+        <h3>关于无障碍</h3>
+        <p>支持键盘操作与可见焦点，文字对比度不低于 4.5:1，所有动效尊重系统的「减少动态效果」设置。移动端单列排布，筛选条可横向滑动，触控目标不小于 44px。</p>
+      </div>
+    </div>
+
+    <div class="foot-settings">
+      <label class="switch">
+        <input type="checkbox" id="pawToggle">
+        <span class="switch__track" aria-hidden="true"><span class="switch__knob"></span></span>
+        <span class="switch__label">爪印光标</span>
+      </label>
+      <span class="foot-settings__note">装饰不抢内容，随时可以关掉。</span>
+    </div>
+
+    <div class="foot-base">
+      <span>© 2026 Wait For UR · 示例站点</span>
+      <a href="https://github.com/YouQiaa/wait-for-ur" rel="noopener">源码 / GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<div class="mobile-bar">
+  <button class="theme-toggle" type="button" data-theme-toggle aria-label="切换到夜间模式" aria-pressed="false">
+    <span class="theme-toggle__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"></path></svg>
+    </span>
+    <span class="theme-toggle__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false"><path d="M20 14.2A8.3 8.3 0 0 1 9.8 4 8.4 8.4 0 1 0 20 14.2Z"></path></svg>
+    </span>
+    <span class="theme-toggle__knob" aria-hidden="true"></span>
+  </button>
+  <a class="btn btn--coral mobile-bar__cta" href="#adopt">我想领养</a>
+</div>
+
+<noscript><p class="noscript">本站需要启用 JavaScript 才能加载宠物卡片与地图。</p></noscript>
+<script src="app.js" defer></script>
+</body>
+</html>
