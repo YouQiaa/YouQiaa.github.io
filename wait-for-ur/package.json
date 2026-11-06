@@ -1,0 +1,10 @@
+{
+  "name": "wait-for-ur",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Wait For UR · 等一个家 —— 宠物领养数据叙事站（IGA Pages 全栈版）",
+  "dependencies": {
+    "@iga-pages/blob": "^1.0.2"
+  }
+}
