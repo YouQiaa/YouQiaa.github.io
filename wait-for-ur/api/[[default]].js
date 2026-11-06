@@ -13,6 +13,8 @@ import {
   rateLimit
 } from "../lib/auth.js";
 import { getJSON, setJSON, getPet, savePet, allPets, publicPet, del, listKeys } from "../lib/db.js";
+import { sendVerifyMail } from "../lib/email.js";
+import { randomInt } from "node:crypto";
 
 const VALID_TAGS = new Set(["社牛", "安静派", "黏人精", "运动型", "适合新手", "公寓友好"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -51,6 +53,35 @@ function text(v, max) {
 
 /* ---------------- auth ---------------- */
 
+const CODE_TTL = 10 * 60e3; // 验证码 10 分钟有效
+const CODE_RESEND_GAP = 60e3; // 同一邮箱 60 秒内不许重发
+
+async function handleSendCode(request) {
+  if (!rateLimit(clientKey(request, "send-code"), 10)) return err(429, "操作太频繁，请稍后再试");
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const email = normalizeEmail(data.email);
+  if (!EMAIL_RE.test(email)) return err(400, "邮箱格式不正确");
+  if (await getUser(email)) return err(409, "这个邮箱已经注册过了，直接登录试试");
+  const key = `codes/${email}.json`;
+  const old = await getJSON(key);
+  if (old && Date.now() - old.sentAt < CODE_RESEND_GAP) {
+    const wait = Math.ceil((CODE_RESEND_GAP - (Date.now() - old.sentAt)) / 1000);
+    return err(429, `发送太频繁，${wait} 秒后再试`);
+  }
+  const code = String(randomInt(0, 1000000)).padStart(6, "0");
+  await setJSON(key, { code, sentAt: Date.now(), expiresAt: Date.now() + CODE_TTL, attempts: 0 });
+  let provider;
+  try {
+    provider = await sendVerifyMail(email, code);
+  } catch (e) {
+    console.error("[mail]", e && e.message);
+    return err(500, "验证码发送失败，请稍后再试");
+  }
+  if (!provider) return json({ ok: true, devCode: code }); // 未配置邮件服务：测试模式，验证码直接回显
+  return json({ ok: true });
+}
+
 async function handleRegister(request) {
   if (!rateLimit(clientKey(request, "register"), 10)) return err(429, "操作太频繁，请稍后再试");
   const data = await request.json().catch(() => null);
@@ -62,6 +93,17 @@ async function handleRegister(request) {
   if (password.length < 8) return err(400, "密码至少 8 位");
   if (!nickname) return err(400, "给自己起个名字吧");
   if (await getUser(email)) return err(409, "这个邮箱已经注册过了，直接登录试试");
+  const codeKey = `codes/${email}.json`;
+  const rec = await getJSON(codeKey);
+  if (!rec) return err(400, "请先获取邮箱验证码");
+  if (rec.expiresAt < Date.now()) return err(400, "验证码已过期，点「发送验证码」重新获取");
+  if (rec.attempts >= 5) return err(400, "验证码错误次数太多，请重新获取");
+  if (rec.code !== text(data.code, 6)) {
+    rec.attempts += 1;
+    await setJSON(codeKey, rec);
+    return err(400, "验证码不正确");
+  }
+  await del(codeKey);
   const { salt, hash } = await hashPassword(password);
   await setJSON(`users/${email}.json`, { email, nickname, salt, passHash: hash, banned: false, createdAt: Date.now() });
   const token = await createSession(email);
@@ -388,6 +430,7 @@ async function handle(request) {
     }
 
     if (seg[0] === "auth") {
+      if (method === "POST" && seg[1] === "send-code") return await handleSendCode(request);
       if (method === "POST" && seg[1] === "register") return await handleRegister(request);
       if (method === "POST" && seg[1] === "login") return await handleLogin(request);
       if (method === "POST" && seg[1] === "logout") return await handleLogout(request);
