@@ -1,8 +1,79 @@
-<p>Hello 大家好</p>
-<p>我是YouQiaa，这是我的个人网站。 </p>
-<p>很高兴你来到这里, 你可以在以下的网站找到我</p>
-
-<ul>
-  <li> <a href="https://www.douyin.com/user/MS4wLjABAAAAUUdMnpD-OttfgO0pAVsoqEaV93959KiqpkVQl4c3EAu4NnGoMAGgVIl0Si_4mz5Q">抖音</a> </li>
-  <li> <a href="1102129629">My  Steam Friend Code</a> </li>
-</ul>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>等一个家 · Wait For UR</title>
+<meta name="description" content="等一个家是一个用真实信息连接送养人与领养人的平台：送养者发布，领养者在线申请，每一只毛孩子都值得一个家。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%90%BE%3C/text%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#F6F3EA; --ink:#1F1B16; --muted:#6C655C;
+    --accent:#E8624F; --accent-ink:#fff;
+    --card:#FFFDF7; --line:#E6DFD2;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14131A; --ink:#F3F1EC; --muted:#A6A09A;
+      --accent:#F0736A; --accent-ink:#1A0F0D;
+      --card:#1D1B24; --line:#2C2A35;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.7; -webkit-font-smoothing:antialiased;
+    display:flex; align-items:center; justify-content:center; padding:48px 24px;
+  }
+  .wrap{width:100%; max-width:760px}
+  .brand{font-size:14px; letter-spacing:.12em; color:var(--muted); margin:0 0 32px}
+  h1{font-size:clamp(34px,6vw,56px); line-height:1.22; margin:0 0 20px; letter-spacing:-.02em}
+  h1 span{color:var(--accent)}
+  .lead{font-size:17px; color:var(--muted); max-width:34em; margin:0 0 36px}
+  .cta{
+    display:inline-flex; align-items:center; gap:10px;
+    padding:14px 26px; border-radius:999px;
+    background:var(--accent); color:var(--accent-ink);
+    font-size:16px; font-weight:600; text-decoration:none;
+    transition:transform .18s ease, opacity .18s ease;
+  }
+  .cta:hover{transform:translateY(-2px); opacity:.92}
+  .cards{display:grid; gap:14px; margin:44px 0 0; grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px 20px}
+  .card h2{font-size:15px; margin:0 0 6px}
+  .card p{font-size:14px; color:var(--muted); margin:0}
+  footer{margin:44px 0 0; font-size:13px; color:var(--muted)}
+  footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <p class="brand">🐾 WAIT FOR UR · 等一个家</p>
+    <h1>把等待，<br /><span>缩短成一次相遇。</span></h1>
+    <p class="lead">
+      送养的人在这里发布真实的健康、性格与联系方式，想给毛孩子一个家的人在这里递交申请。
+      不编造信息，不做样板数据——这里的每一只，都真的在等。
+    </p>
+    <a class="cta" href="./wait-for-ur/">进入「等一个家」 →</a>
+    <div class="cards">
+      <div class="card">
+        <h2>真实送养发布</h2>
+        <p>健康、性格、城市与联系方式都要填清楚，审核通过后才出现在列表里。</p>
+      </div>
+      <div class="card">
+        <h2>在线领养申请</h2>
+        <p>看到合适的毛孩子，直接递交申请，发布者在自己的后台查看与处理。</p>
+      </div>
+      <div class="card">
+        <h2>留言与心愿单</h2>
+        <p>收藏、留言、点赞与回复，让每一次询问都有回应。</p>
+      </div>
+    </div>
+    <footer>
+      © 2026 等一个家 · Wait For UR — 每一只猫咪，都值得一个家。
+    </footer>
+  </main>
+</body>
+</html>
