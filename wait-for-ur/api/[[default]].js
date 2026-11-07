@@ -618,7 +618,7 @@ function publicPost(p, me) {
     text: p.text,
     photos: (p.photoKeys || []).map((k) => `/api/photos/${k}`),
     createdAt: p.createdAt,
-    mine: !!me && (me.email === p.authorEmail || me.admin)
+    mine: !!me && (p.email === me.email || me.admin)
   };
 }
 
