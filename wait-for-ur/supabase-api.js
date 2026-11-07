@@ -203,11 +203,10 @@
     if (method === "POST" && seg[1] === "send-code") {
       const email = text(payload && payload.email, 120).toLowerCase();
       if (!EMAIL_RE.test(email)) return fail(400, "邮箱格式不正确");
-      const { data, error } = await sb.from("profiles").select("id").eq("email", email).maybeSingle();
+      const { data, error } = await sb.rpc("request_code", { p_email: email });
       if (error) return fail(500, error.message);
-      if (data) return fail(409, "这个邮箱已经注册过了，直接登录试试");
-      // 当前 Supabase 项目未接邮件服务：验证码固定为 000000，注册时不做拦截。
-      return ok({ devCode: "000000" });
+      if (data && data.ok === false) return fail(400, data.error || "验证码发送失败");
+      return ok({ ok: true });
     }
 
     if (method === "POST" && seg[1] === "register") {
@@ -217,6 +216,13 @@
       if (!EMAIL_RE.test(email)) return fail(400, "邮箱格式不正确");
       if (password.length < 8) return fail(400, "密码至少 8 位");
       if (!nickname) return fail(400, "给自己起个名字吧");
+      if (!/^\d{6}$/.test(text(payload && payload.code, 6))) return fail(400, "填一下邮箱收到的 6 位验证码");
+
+      const v = await sb.rpc("verify_code", { p_email: email, p_code: text(payload.code, 6) });
+      if (v.error) return fail(500, v.error.message);
+      if (!v.data || v.data.ok === false) {
+        return fail(400, (v.data && v.data.error) || "验证码不正确");
+      }
 
       const { data, error } = await sb.auth.signUp({
         email,
