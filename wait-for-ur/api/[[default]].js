@@ -264,3 +264,648 @@ async function handleDeletePet(request, me, id) {
   await del(`pets/${id}.json`);
   return json({ ok: true });
 }
+
+/* ---------------- photos ---------------- */
+
+async function handleUploadTicket(request, me) {
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const n = Number(data.n);
+  let key;
+  if (data.scope === "comment" || data.scope === "post") {
+    const id = text(data.id, 48);
+    if (!ID_RE.test(id) || !(n >= 0 && n <= 2)) return err(400, "参数不正确");
+    key = `photos/${data.scope === "comment" ? "c" : "w"}-${id}-${n}`;
+  } else {
+    const petId = text(data.petId, 48);
+    if (!ID_RE.test(petId) || !(n >= 0 && n <= 2)) return err(400, "参数不正确");
+    key = `photos/${petId}-${n}`;
+  }
+  let ticket;
+  try {
+    ticket = await blob.createUploadUrl(key, { onlyIfNew: true });
+  } catch (e) {
+    if (e && (e.code === 409 || e.status === 409 || /already exists/i.test(String(e.message)))) {
+      return err(409, "这个照片位置已被占用，换个序号或先删掉旧的");
+    }
+    throw e;
+  }
+  return json({ ok: true, key, url: ticket.url, expiresAt: ticket.expiresAt });
+}
+
+async function handlePhoto(request, key) {
+  if (!/^photos\/[\w.-]+$/.test(key)) return err(400, "参数不正确");
+  const buf = await blob.get(key, { format: "arrayBuffer" });
+  if (!buf) return err(404, "照片不存在");
+  const meta = await blob.info(key);
+  const type = meta?.contentType || "image/jpeg";
+  return new Response(buf, {
+    headers: {
+      "Content-Type": type,
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  });
+}
+
+/* ---------------- favorites ---------------- */
+
+function favKey(email, petId) {
+  return `favorites/${normalizeEmail(email)}/${petId}`;
+}
+
+async function handleFav(me, petId, on) {
+  const pet = await getPet(petId);
+  if (!pet || (pet.status !== "approved" && pet.status !== "adopted")) return err(404, "没有找到这只猫咪");
+  if (on) await setJSON(favKey(me.email, petId), { petId, createdAt: Date.now() });
+  else await del(favKey(me.email, petId));
+  return json({ ok: true });
+}
+
+async function handleMyFavorites(request, me) {
+  const favs = await listJSONSafe(`favorites/${me.email}/`);
+  const out = [];
+  for (const f of favs) {
+    const pet = await getPet(f.petId);
+    if (pet && (pet.status === "approved" || pet.status === "adopted")) {
+      out.push(publicPet(pet, { viewerLoggedIn: true }));
+    }
+  }
+  return json({ ok: true, pets: out, ids: out.map((p) => p.id) });
+}
+
+async function listJSONSafe(prefix) {
+  try {
+    const keys = await listKeys(prefix);
+    const out = [];
+    for (const k of keys) {
+      const v = await getJSON(k);
+      if (v) out.push(v);
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+async function handleMyPets(request, me) {
+  const pets = await allPets();
+  const mine = pets.filter((p) => p.ownerEmail === me.email);
+  mine.sort((a, b) => b.createdAt - a.createdAt);
+  return json({ ok: true, pets: mine.map((p) => ({ ...publicPet(p, { viewerLoggedIn: true }), rejectReason: p.rejectReason })) });
+}
+
+/* ---------------- comments ---------------- */
+
+function commentKey(petId, id) {
+  return `comments/${petId}/${id}.json`;
+}
+
+async function commentCounts() {
+  try {
+    const keys = await listKeys("comments/");
+    const map = {};
+    for (const k of keys) {
+      const seg = k.split("/");
+      if (seg.length >= 3 && seg[2]) map[seg[1]] = (map[seg[1]] || 0) + 1;
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+function publicReply(r, me) {
+  return {
+    id: r.id,
+    author: r.authorName,
+    text: r.text,
+    createdAt: r.createdAt,
+    mine: !!me && (me.email === r.authorEmail || me.admin)
+  };
+}
+
+function publicComment(c, me) {
+  return {
+    id: c.id,
+    author: c.authorName,
+    text: c.text,
+    photos: (c.photoKeys || []).map((k) => `/api/photos/${k}`),
+    createdAt: c.createdAt,
+    likes: (c.likedBy || []).length,
+    liked: !!me && (c.likedBy || []).includes(me.email),
+    replies: (c.replies || [])
+      .slice()
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map((r) => publicReply(r, me)),
+    mine: !!me && (me.email === c.authorEmail || me.admin)
+  };
+}
+
+async function handleListComments(request, petId) {
+  const pet = await getPet(petId);
+  if (!pet || pet.status === "rejected" || pet.status === "pending") return err(404, "没有找到这只猫咪");
+  const me = await getSessionUser(request);
+  const items = await listJSONSafe(`comments/${petId}/`);
+  items.sort((a, b) => a.createdAt - b.createdAt);
+  return json({ ok: true, comments: items.map((c) => publicComment(c, me)) });
+}
+
+async function handleCreateComment(request, me, petId) {
+  const pet = await getPet(petId);
+  if (!pet || pet.status === "rejected" || pet.status === "pending") return err(404, "没有找到这只猫咪");
+  if (!rateLimit(clientKey(request, "comment"), 20)) return err(429, "留言太频繁，歇一会儿再发");
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const id = text(data.id, 48);
+  if (!ID_RE.test(id)) return err(400, "参数不正确");
+  if (await getJSON(commentKey(petId, id))) return err(409, "请重新提交一次");
+  const content = text(data.text, 120);
+  const photoKeys = Array.isArray(data.photoKeys) ? data.photoKeys.filter((k) => typeof k === "string").slice(0, 3) : [];
+  if (!content && !photoKeys.length) return err(400, "写点什么，或者发张图片");
+  if (!photoKeys.every((k) => k.startsWith(`photos/c-${id}-`))) return err(400, "图片与留言不匹配");
+  const c = {
+    id,
+    petId,
+    authorEmail: me.email,
+    authorName: me.nickname,
+    text: content,
+    photoKeys,
+    createdAt: Date.now()
+  };
+  await setJSON(commentKey(petId, id), c);
+  return json({ ok: true, comment: publicComment(c, me) });
+}
+
+async function handleDeleteComment(request, me, petId, id) {
+  const key = commentKey(petId, id);
+  const c = await getJSON(key);
+  if (!c) return err(404, "留言不存在");
+  if (c.authorEmail !== me.email && !me.admin) return err(403, "只能删除自己的留言");
+  for (const k of c.photoKeys || []) await del(k);
+  await del(key);
+  return json({ ok: true });
+}
+
+async function handleToggleCommentLike(request, me, petId, id, on) {
+  const key = commentKey(petId, id);
+  const c = await getJSON(key);
+  if (!c) return err(404, "留言不存在");
+  const set = new Set(c.likedBy || []);
+  if (on) set.add(me.email);
+  else set.delete(me.email);
+  c.likedBy = [...set];
+  await setJSON(key, c);
+  return json({ ok: true, likes: set.size, liked: on });
+}
+
+async function handleCreateReply(request, me, petId, id) {
+  const key = commentKey(petId, id);
+  const c = await getJSON(key);
+  if (!c) return err(404, "留言不存在");
+  if (!rateLimit(clientKey(request, "reply"), 20)) return err(429, "回复太频繁，歇一会儿再发");
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const rid = text(data.id, 48);
+  if (!ID_RE.test(rid)) return err(400, "参数不正确");
+  const content = text(data.text, 120);
+  if (!content) return err(400, "写点什么再回复");
+  const replies = Array.isArray(c.replies) ? c.replies : [];
+  if (replies.length >= 50) return err(400, "这条留言的回复已经满了");
+  const r = { id: rid, authorEmail: me.email, authorName: me.nickname, text: content, createdAt: Date.now() };
+  replies.push(r);
+  c.replies = replies;
+  await setJSON(key, c);
+  return json({ ok: true, reply: publicReply(r, me) });
+}
+
+/* ---------------- adoption applications ---------------- */
+
+function applicationKey(petId, id) {
+  return `applications/${petId}/${id}.json`;
+}
+
+async function handleCreateApplication(request, me, petId) {
+  const pet = await getPet(petId);
+  if (!pet || pet.status !== "approved") return err(404, "这只猫咪暂时不能申请领养");
+  if (pet.ownerEmail === me.email) return err(400, "不能申请自己发布的猫咪");
+  if (!rateLimit(clientKey(request, "apply"), 5)) return err(429, "申请太频繁，请稍后再试");
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const id = text(data.id, 48);
+  if (!ID_RE.test(id)) return err(400, "参数不正确");
+  const intro = text(data.intro, 200);
+  const housing = text(data.housing, 60);
+  const contact = text(data.contact, 40);
+  if (intro.length < 8) return err(400, "简单介绍一下自己和照顾计划（至少 8 个字）");
+  if (!contact) return err(400, "留个联系方式，方便对方联系你");
+  const existing = await listJSONSafe(`applications/${petId}/`);
+  if (existing.some((a) => a.fromEmail === me.email && a.status !== "closed")) {
+    return err(409, "你已经申请过这只猫咪了，等对方联系你吧");
+  }
+  const application = {
+    id,
+    petId,
+    petName: pet.name,
+    toEmail: pet.ownerEmail,
+    fromEmail: me.email,
+    fromName: me.nickname,
+    intro,
+    housing,
+    contact,
+    status: "pending",
+    createdAt: Date.now()
+  };
+  await setJSON(applicationKey(petId, id), application);
+  return json({ ok: true, id });
+}
+
+async function handleListApplications(request, me, petId) {
+  const pet = await getPet(petId);
+  if (!pet) return err(404, "没有找到这只猫咪");
+  if (pet.ownerEmail !== me.email && !me.admin) return err(403, "只有发布者能查看申请");
+  const items = await listJSONSafe(`applications/${petId}/`);
+  items.sort((a, b) => b.createdAt - a.createdAt);
+  return json({ ok: true, applications: items });
+}
+
+async function handleUpdateApplication(request, me, petId, id) {
+  const key = applicationKey(petId, id);
+  const a = await getJSON(key);
+  if (!a) return err(404, "没有找到这条申请");
+  const pet = await getPet(petId);
+  if ((!pet || pet.ownerEmail !== me.email) && !me.admin) return err(403, "只有发布者能处理申请");
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  if (!["pending", "contacted", "closed"].includes(data.status)) return err(400, "未知状态");
+  a.status = data.status;
+  a.updatedAt = Date.now();
+  await setJSON(key, a);
+  return json({ ok: true, status: a.status });
+}
+
+async function handleMyApplications(request, me) {
+  const pets = await allPets();
+  const mine = pets.filter((p) => p.ownerEmail === me.email);
+  const out = [];
+  for (const p of mine) out.push(...(await listJSONSafe(`applications/${p.id}/`)));
+  out.sort((a, b) => b.createdAt - a.createdAt);
+  return json({ ok: true, applications: out });
+}
+
+async function handleMyComments(request, me) {
+  const items = await listJSONSafe("comments/");
+  const mine = items.filter((c) => c.authorEmail === me.email);
+  mine.sort((a, b) => b.createdAt - a.createdAt);
+  const nameCache = new Map();
+  const out = [];
+  for (const c of mine) {
+    if (!nameCache.has(c.petId)) {
+      const pet = await getPet(c.petId);
+      nameCache.set(c.petId, pet ? { name: pet.name, photo: publicPet(pet).photo } : { name: "已下架", photo: null });
+    }
+    const info = nameCache.get(c.petId);
+    out.push({ ...publicComment(c, me), petId: c.petId, petName: info.name, petPhoto: info.photo });
+  }
+  return json({ ok: true, comments: out });
+}
+
+async function handleMyInbox(request, me) {
+  const pets = await allPets();
+  const mine = pets.filter((p) => p.ownerEmail === me.email);
+  const items = [];
+  for (const p of mine) {
+    const comments = await listJSONSafe(`comments/${p.id}/`);
+    for (const c of comments) {
+      items.push({
+        type: "comment",
+        id: c.id,
+        petId: p.id,
+        petName: p.name,
+        author: c.authorName,
+        text: c.text,
+        photos: (c.photoKeys || []).map((k) => `/api/photos/${k}`),
+        at: c.createdAt
+      });
+    }
+    const applications = await listJSONSafe(`applications/${p.id}/`);
+    for (const a of applications) {
+      items.push({
+        type: "application",
+        id: a.id,
+        petId: p.id,
+        petName: p.name,
+        author: a.fromName,
+        text: a.intro,
+        housing: a.housing,
+        contact: a.contact,
+        status: a.status,
+        at: a.createdAt
+      });
+    }
+  }
+  items.sort((a, b) => b.at - a.at);
+  return json({ ok: true, items });
+}
+
+/* ---------------- wall posts ---------------- */
+
+function publicPost(p, me) {
+  return {
+    id: p.id,
+    author: p.authorName,
+    text: p.text,
+    photos: (p.photoKeys || []).map((k) => `/api/photos/${k}`),
+    createdAt: p.createdAt,
+    mine: !!me && (me.email === p.authorEmail || me.admin)
+  };
+}
+
+async function handleListPosts(request) {
+  const me = await getSessionUser(request);
+  const items = await listJSONSafe("posts/");
+  items.sort((a, b) => b.createdAt - a.createdAt);
+  return json({ ok: true, posts: items.map((p) => publicPost(p, me)) });
+}
+
+async function handleCreatePost(request, me) {
+  if (!rateLimit(clientKey(request, "post"), 10)) return err(429, "发得太频繁，稍后再试");
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const id = text(data.id, 48);
+  if (!ID_RE.test(id)) return err(400, "参数不正确");
+  if (await getJSON(`posts/${id}.json`)) return err(409, "请重新提交一次");
+  const content = text(data.text, 300);
+  const photoKeys = Array.isArray(data.photoKeys) ? data.photoKeys.filter((k) => typeof k === "string").slice(0, 3) : [];
+  if (!content && !photoKeys.length) return err(400, "写一句话，或者发一张图");
+  if (!photoKeys.every((k) => k.startsWith(`photos/w-${id}-`))) return err(400, "图片与内容不匹配");
+  const p = {
+    id,
+    authorEmail: me.email,
+    authorName: me.nickname,
+    text: content,
+    photoKeys,
+    createdAt: Date.now()
+  };
+  await setJSON(`posts/${id}.json`, p);
+  return json({ ok: true, post: publicPost(p, me) });
+}
+
+async function handleDeletePost(request, me, id) {
+  const key = `posts/${id}.json`;
+  const p = await getJSON(key);
+  if (!p) return err(404, "这条动态不存在");
+  if (p.authorEmail !== me.email && !me.admin) return err(403, "只能删除自己发布的内容");
+  for (const k of p.photoKeys || []) await del(k);
+  await del(key);
+  return json({ ok: true });
+}
+
+/* ---------------- stats ---------------- */
+
+async function handleStats() {
+  const pets = await allPets();
+  const active = pets.filter((p) => p.status === "approved" || p.status === "adopted");
+  const waiting = active.filter((p) => p.status === "approved");
+  const adopted = active.filter((p) => p.status === "adopted");
+  const cities = new Set(active.map((p) => p.city));
+  const now = Date.now();
+  const DAY = 86400e3;
+  const avgWaitDays = waiting.length
+    ? Math.round(waiting.reduce((sum, p) => sum + Math.max(0, Math.floor((now - p.createdAt) / DAY)), 0) / waiting.length)
+    : 0;
+
+  const months = [];
+  const base = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const start = new Date(base.getFullYear(), base.getMonth() - i, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    const list = adopted.filter((p) => p.adoptedAt && p.adoptedAt >= start.getTime() && p.adoptedAt < end.getTime());
+    months.push({
+      label: `${start.getFullYear()}.${start.getMonth() + 1}`,
+      month: start.getMonth() + 1,
+      count: list.length
+    });
+  }
+
+  const total = active.length;
+  const rate = total ? Math.round((adopted.length / total) * 100) : 0;
+  const featured = waiting.length ? publicPet(waiting[Math.floor(Math.random() * waiting.length)], { viewerLoggedIn: false }) : null;
+
+  return json({
+    ok: true,
+    waiting: waiting.length,
+    adopted: adopted.length,
+    cities: cities.size,
+    avgWaitDays,
+    months,
+    rate,
+    total,
+    featured,
+    feed: active
+      .slice()
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 8)
+      .map((p) => ({ id: p.id, name: p.name, city: p.city, status: p.status, stage: p.stage, days: publicPet(p).days }))
+  });
+}
+
+/* ---------------- admin ---------------- */
+
+async function handleAdminPending(request, me) {
+  const pets = await allPets();
+  const pending = pets.filter((p) => p.status === "pending").sort((a, b) => a.createdAt - b.createdAt);
+  return json({ ok: true, pets: pending.map((p) => ({ ...publicPet(p, { viewerLoggedIn: true }), ownerEmail: p.ownerEmail })) });
+}
+
+async function handleAdminReview(request, me) {
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const pet = await getPet(text(data.id, 48));
+  if (!pet) return err(404, "没有找到这只猫咪");
+  if (pet.status !== "pending") return err(400, "这条信息已经审核过了");
+  if (data.action === "approve") {
+    const owner = await getUser(pet.ownerEmail);
+    if (owner?.banned) return err(400, "发布者已被封禁，不能通过");
+    pet.status = "approved";
+    pet.rejectReason = null;
+  } else if (data.action === "reject") {
+    pet.status = "rejected";
+    pet.rejectReason = text(data.reason, 60) || "信息不完整，请补充后再提交";
+  } else {
+    return err(400, "未知操作");
+  }
+  await savePet(pet);
+  return json({ ok: true });
+}
+
+async function handleAdminBan(request, me) {
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const email = normalizeEmail(data.email);
+  if (email === me.email) return err(400, "不能封禁自己");
+  const user = await getUser(email);
+  if (!user) return err(404, "没有找到这个账号");
+  user.banned = true;
+  await setJSON(`users/${email}.json`, user);
+  const pets = await allPets();
+  for (const p of pets) {
+    // 骗子发布的所有信息都不可信，含"已回家"，一并下架
+    if (p.ownerEmail === email && p.status !== "rejected") {
+      p.status = "rejected";
+      p.rejectReason = "账号因不实信息被永久封禁";
+      await savePet(p);
+    }
+  }
+  await destroyUserSessions(email);
+  return json({ ok: true });
+}
+
+/* ---------------- router ---------------- */
+
+export default {
+  async fetch(request) {
+    return await handle(request);
+  }
+};
+
+async function handle(request) {
+  const url = new URL(request.url, "http://localhost");
+  const path = url.pathname.replace(/^\/api\/?/, "").replace(/\/+$/, "");
+  const seg = path.split("/").filter(Boolean);
+  const method = request.method;
+
+  try {
+    if (seg[0] === "health") {
+      if (url.searchParams.get("plain") === "1") return json({ ok: true, plain: true });
+      const { blob } = await import("@iga-pages/blob");
+      const t = Date.now();
+      if (url.searchParams.get("ticket") === "1") {
+        try {
+          const tk = await blob.createUploadUrl("photos/healthcheck-0", { onlyIfNew: false, abortSignal: AbortSignal.timeout(8000) });
+          return json({ ok: true, ms: Date.now() - t, ticketKey: tk.key, hasUrl: !!tk.url, method: tk.method });
+        } catch (e) {
+          return json({ ok: false, ms: Date.now() - t, err: String(e && e.message || e), code: e && e.code, stack: String(e && e.stack || "").slice(0, 500) });
+        }
+      }
+      try {
+        const r = await blob.list({ prefix: "pets/", abortSignal: AbortSignal.timeout(8000) });
+        return json({ ok: true, ms: Date.now() - t, keys: (r.blobs || []).length });
+      } catch (e) {
+        return json({ ok: false, ms: Date.now() - t, err: String(e && e.message || e), code: e && e.code });
+      }
+    }
+
+    if (seg[0] === "auth") {
+      if (method === "POST" && seg[1] === "send-code") return await handleSendCode(request);
+      if (method === "POST" && seg[1] === "register") return await handleRegister(request);
+      if (method === "POST" && seg[1] === "login") return await handleLogin(request);
+      if (method === "POST" && seg[1] === "logout") return await handleLogout(request);
+      if (method === "GET" && seg[1] === "me") return await handleMe(request);
+    }
+
+    if (seg[0] === "stats" && method === "GET") return await handleStats();
+
+    if (seg[0] === "posts") {
+      if (!seg[1] && method === "GET") return await handleListPosts(request);
+      if (!seg[1] && method === "POST") {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录，再晒图");
+        return await handleCreatePost(request, me);
+      }
+      if (seg[1] && method === "DELETE") {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录");
+        return await handleDeletePost(request, me, seg[1]);
+      }
+    }
+
+    if (seg[0] === "photos" && seg[1] && method === "GET") return await handlePhoto(request, seg.slice(1).join("/"));
+
+    if (seg[0] === "pets" && seg[1] && seg[2] === "comments") {
+      const cid = seg[3];
+      if (method === "GET" && !cid) return await handleListComments(request, seg[1]);
+      if (method === "POST" && !cid) {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录，再留言");
+        return await handleCreateComment(request, me, seg[1]);
+      }
+      if (cid && seg[4] === "like") {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录，再点赞");
+        if (method === "POST") return await handleToggleCommentLike(request, me, seg[1], cid, true);
+        if (method === "DELETE") return await handleToggleCommentLike(request, me, seg[1], cid, false);
+      }
+      if (method === "POST" && cid && seg[4] === "replies") {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录，再回复");
+        return await handleCreateReply(request, me, seg[1], cid);
+      }
+      if (method === "DELETE" && cid && !seg[4]) {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录");
+        return await handleDeleteComment(request, me, seg[1], cid);
+      }
+    }
+
+    if (seg[0] === "pets" && seg[1] && seg[2] === "applications") {
+      const me = await getSessionUser(request);
+      if (!me) return err(401, "先登录，再申请领养");
+      if (method === "GET" && !seg[3]) return await handleListApplications(request, me, seg[1]);
+      if (method === "POST" && !seg[3]) return await handleCreateApplication(request, me, seg[1]);
+      if (method === "PATCH" && seg[3]) return await handleUpdateApplication(request, me, seg[1], seg[3]);
+    }
+
+    if (seg[0] === "pets" && !seg[1]) {
+      if (method === "GET") return await handleListPets(request, url);
+      if (method === "POST") {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录，再发布");
+        return await handleCreatePet(request, me);
+      }
+    }
+
+    if (seg[0] === "pets" && seg[1]) {
+      const me = await getSessionUser(request);
+      if (!me) return err(401, "先登录");
+      if (method === "PATCH") return await handlePatchPet(request, me, seg[1]);
+      if (method === "DELETE") return await handleDeletePet(request, me, seg[1]);
+    }
+
+    if (seg[0] === "upload-ticket" && method === "POST") {
+      const me = await getSessionUser(request);
+      if (!me) return err(401, "先登录");
+      return await handleUploadTicket(request, me);
+    }
+
+    if (seg[0] === "favorites" && seg[1]) {
+      const me = await getSessionUser(request);
+      if (!me) return err(401, "先登录，再收藏");
+      if (method === "POST") return await handleFav(me, seg[1], true);
+      if (method === "DELETE") return await handleFav(me, seg[1], false);
+    }
+
+    if (seg[0] === "my") {
+      const me = await getSessionUser(request);
+      if (!me) return err(401, "先登录");
+      if (method === "GET" && seg[1] === "pets") return await handleMyPets(request, me);
+      if (method === "GET" && seg[1] === "favorites") return await handleMyFavorites(request, me);
+      if (method === "GET" && seg[1] === "applications") return await handleMyApplications(request, me);
+      if (method === "GET" && seg[1] === "comments") return await handleMyComments(request, me);
+      if (method === "GET" && seg[1] === "inbox") return await handleMyInbox(request, me);
+    }
+
+    if (seg[0] === "admin") {
+      const me = await getSessionUser(request);
+      if (!me) return err(401, "先登录");
+      if (!me.admin) return err(403, "这里只有审核员能进");
+      if (method === "GET" && seg[1] === "pending") return await handleAdminPending(request, me);
+      if (method === "POST" && seg[1] === "review") return await handleAdminReview(request, me);
+      if (method === "POST" && seg[1] === "ban") return await handleAdminBan(request, me);
+    }
+
+    return err(404, "接口不存在");
+  } catch (e) {
+    console.error("[api] unhandled:", e && e.message);
+    return err(500, "服务器出了点小状况，稍后再试");
+  }
+}
