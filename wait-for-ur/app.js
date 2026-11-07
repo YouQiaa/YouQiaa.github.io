@@ -8,6 +8,67 @@
     String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  /* ---------------- 静态展示模式 ------------- */
+  // GitHub Pages 这类纯静态托管跑不了 api/，启动时探测 /api/auth/me：
+  // 拿不到 JSON 响应就进入展示模式，把依赖后端的功能置灰，
+  // 顶部显示说明和「打开完整版」，避免访问者以为站点坏了。
+  let staticMode = false;
+
+  async function detectApi() {
+    try {
+      const res = await fetch("/api/auth/me", {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" }
+      });
+      if (!res.ok) return false;
+      return (res.headers.get("content-type") || "").includes("application/json");
+    } catch {
+      return false;
+    }
+  }
+
+  function requireLive(action) {
+    if (!staticMode) return true;
+    toast(`静态展示版不支持${action}，请点顶部「打开完整版」`);
+    const bar = $("#staticBar");
+    if (bar) {
+      bar.classList.remove("is-pulse");
+      void bar.offsetWidth;
+      bar.classList.add("is-pulse");
+    }
+    return false;
+  }
+
+  function enterStaticMode() {
+    staticMode = true;
+    document.body.classList.add("is-static");
+
+    const bar = $("#staticBar");
+    if (bar) {
+      bar.hidden = false;
+      const link = $("#liveSiteLink");
+      if (link && bar.dataset.liveUrl) link.href = bar.dataset.liveUrl;
+    }
+
+    ["#authBtn", "#mobileMineBtn", "#userMenuBtn", "#logoutBtn", "#matchBtn"].forEach((sel) => {
+      const el = $(sel);
+      if (!el) return;
+      el.classList.add("is-disabled");
+      el.setAttribute("aria-disabled", "true");
+    });
+    if ($("#authBtn")) $("#authBtn").title = "静态展示版：登录请到完整版站点";
+
+    const empty = $("#emptyState");
+    if (empty) {
+      empty.hidden = false;
+      empty.textContent = "这是静态展示版，宠物和互动数据都在完整版里。点顶部「打开完整版」去看正在等的那几只。";
+    }
+    const count = $("#resultCount");
+    if (count) count.textContent = "静态展示 · 暂无实时数据";
+    const wallEmpty = $("#wallEmpty");
+    if (wallEmpty) wallEmpty.hidden = false;
+  }
+
   /* ---------------- toast ---------------- */
   const toastEl = document.createElement("div");
   toastEl.className = "toast";
@@ -101,6 +162,7 @@
   const regForm = $("#regForm");
 
   function openAuth(tab = "login") {
+    if (!requireLive("登录 / 注册")) return;
     if (!authDialog) return;
     switchAuthTab(tab);
     if (!authDialog.open) authDialog.showModal();
@@ -500,6 +562,7 @@
   }
 
   async function loadPets() {
+    if (staticMode) return;
     petsGrid.innerHTML = `<p class="loading-line">正在加载…</p>`;
     try {
       const data = await api(`/api/pets?area=${area}`);
@@ -660,6 +723,7 @@
   }
 
   function openPublish(pet = null) {
+    if (!requireLive("发布送养")) return;
     if (!me) {
       openAuth("login");
       toast("先登录，再发布");
@@ -896,6 +960,7 @@
   const accountBody = $("#accountBody");
 
   function openAccount(tab = "inbox") {
+    if (!requireLive("我的小屋")) return;
     if (!me) {
       openAuth("login");
       return;
@@ -1369,6 +1434,7 @@
   }
 
   function openComments(pet) {
+    if (!requireLive("留言")) return;
     commentPet = pet;
     commentPhotos = [];
     $("#commentPetImg").src = pet.photo || "assets/favicon.svg";
@@ -1433,6 +1499,7 @@
   let applyPet = null;
 
   function openApply(pet) {
+    if (!requireLive("领养申请")) return;
     if (!me) {
       openAuth("login");
       toast("先登录，再申请领养");
@@ -1557,6 +1624,7 @@
   }
 
   async function loadPosts() {
+    if (staticMode) return;
     try {
       const data = await api("/api/posts");
       wallPosts = data.posts;
@@ -1575,6 +1643,7 @@
   if ($("#wallForm")) {
     $("#wallForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!requireLive("晒图发布")) return;
       if (!me) {
         openAuth("login");
         return;
@@ -1697,6 +1766,7 @@
   }
 
   async function loadStats() {
+    if (staticMode) return;
     try {
       const s = await api("/api/stats");
       applyStats(s);
@@ -1853,6 +1923,7 @@
 
   if ($("#matchBtn") && matchDialog) {
     $("#matchBtn").addEventListener("click", () => {
+      if (!requireLive("配对问答")) return;
       $("#matchResult").hidden = true;
       matchForm.reset();
       $("#matchErr").textContent = "";
@@ -1868,6 +1939,11 @@
 
   /* ---------------- boot ---------------- */
   (async () => {
+    if (!(await detectApi())) {
+      enterStaticMode();
+      setView("list");
+      return;
+    }
     await refreshMe();
     await refreshFavs();
     setView("list");
