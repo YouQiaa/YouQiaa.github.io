@@ -1,5 +1,4 @@
 import { blob } from "@iga-pages/blob";
-import { OFFICIAL_PETS } from "./official-pets.js";
 
 export async function getJSON(key) {
   return (await blob.get(key, { format: "json" })) ?? null;
@@ -32,56 +31,11 @@ export async function listJSON(prefix) {
   return out;
 }
 
-let seeded = false;
-
-/* 官方数据幂等 seed：固定 id，缺失才写入 */
-export async function ensureSeed() {
-  if (seeded) return;
-  const existing = new Set(await listKeys("pets/"));
-  for (const p of OFFICIAL_PETS) {
-    if (existing.has(`pets/${p.id}.json`)) continue;
-    const status = p.stage === "adopted" ? "adopted" : "approved";
-    const now = Date.now();
-    await setJSON(`pets/${p.id}.json`, {
-      id: p.id,
-      source: "official",
-      ownerEmail: null,
-      ownerName: p.shelter,
-      name: p.name,
-      species: p.species,
-      age: p.age,
-      sex: p.sex,
-      neuter: p.neuter,
-      vaccine: p.vaccine,
-      city: p.city,
-      shelter: p.shelter,
-      coords: p.coords,
-      label: p.label,
-      tags: p.tags,
-      quote: p.quote,
-      contact: null,
-      photo: p.photo,
-      alt: p.alt,
-      photoKeys: [],
-      flag: p.flag || null,
-      status,
-      stage: status === "approved" ? p.stage : null,
-      days: p.days,
-      createdAt: now - p.days * 86400e3,
-      adoptedAt: status === "adopted" ? now - p.days * 86400e3 : null,
-      rejectReason: null
-    });
-  }
-  seeded = true;
-}
-
 export async function allPets() {
-  await ensureSeed();
   return listJSON("pets/");
 }
 
 export async function getPet(id) {
-  await ensureSeed();
   return getJSON(`pets/${id}.json`);
 }
 
