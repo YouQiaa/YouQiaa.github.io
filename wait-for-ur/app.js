@@ -140,6 +140,50 @@
       }
     });
 
+    /* 发送邮箱验证码：60 秒倒计时；未配置邮件服务时服务端回传 devCode 自动填入（测试模式） */
+    const sendCodeBtn = $("#sendCodeBtn");
+    let codeCountdown = 0;
+    let codeTimer = null;
+    function tickCodeBtn() {
+      if (codeCountdown <= 0) {
+        clearInterval(codeTimer);
+        codeTimer = null;
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.textContent = "发送验证码";
+        return;
+      }
+      sendCodeBtn.disabled = true;
+      sendCodeBtn.textContent = `${codeCountdown}s 后重发`;
+      codeCountdown -= 1;
+    }
+    sendCodeBtn.addEventListener("click", async () => {
+      const errEl = $("#regErr");
+      errEl.textContent = "";
+      const email = regForm.email.value.trim();
+      if (!email) {
+        errEl.textContent = "先填邮箱，再收验证码";
+        return;
+      }
+      sendCodeBtn.disabled = true;
+      sendCodeBtn.textContent = "发送中…";
+      try {
+        const data = await api("/api/auth/send-code", { method: "POST", body: { email } });
+        if (data.devCode) {
+          regForm.code.value = data.devCode;
+          toast("测试模式：验证码已自动填入");
+        } else {
+          toast("验证码已发送，去邮箱查收（记得看垃圾箱）");
+        }
+        codeCountdown = 60;
+        if (!codeTimer) codeTimer = setInterval(tickCodeBtn, 1000);
+        tickCodeBtn();
+      } catch (err2) {
+        errEl.textContent = err2.message;
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.textContent = "发送验证码";
+      }
+    });
+
     regForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const errEl = $("#regErr");
@@ -148,13 +192,18 @@
         errEl.textContent = "密码至少 8 位";
         return;
       }
+      if (!/^\d{6}$/.test(regForm.code.value.trim())) {
+        errEl.textContent = "填一下邮箱收到的 6 位验证码";
+        return;
+      }
       try {
         const data = await api("/api/auth/register", {
           method: "POST",
           body: {
             nickname: regForm.nickname.value,
             email: regForm.email.value,
-            password: regForm.password.value
+            password: regForm.password.value,
+            code: regForm.code.value.trim()
           }
         });
         me = data.user;
@@ -185,6 +234,7 @@
       userMenuPop.hidden = true;
       if (mineBtn) mineBtn.hidden = true;
     }
+    renderWallAuthState();
   }
 
   async function refreshMe() {
@@ -327,7 +377,12 @@
         </div>
         <div class="pet-card__foot">
           ${statusBadge(pet)}
-          <button class="pet-card__pat" type="button" data-pat="${esc(pet.id)}">摸摸它 <span class="pat-count">${patMap[pet.id] || 0}</span></button>
+          <div class="pet-card__actions">
+            <button class="pet-card__cmt" type="button" data-comment="${esc(pet.id)}" aria-label="给 ${esc(pet.name)} 留言">
+              留言 <span class="cmt-count">${pet.commentCount || 0}</span>
+            </button>
+            <button class="pet-card__pat" type="button" data-pat="${esc(pet.id)}">摸摸它 <span class="pat-count">${patMap[pet.id] || 0}</span></button>
+          </div>
         </div>
         <details class="pet-card__details">
           <summary>展开看详情</summary>
@@ -356,7 +411,17 @@
     bindCardEvents();
   }
 
+  function bindCommentButtons(root, pets) {
+    $$("[data-comment]", root).forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const pet = (pets || currentPets).find((p) => p.id === btn.dataset.comment);
+        if (pet) openComments(pet);
+      })
+    );
+  }
+
   function bindCardEvents() {
+    bindCommentButtons(petsGrid, currentPets);
     $$("[data-fav]", petsGrid).forEach((btn) =>
       btn.addEventListener("click", async () => {
         if (!me) {
@@ -765,7 +830,7 @@
         accountBody.innerHTML = data.pets.length
           ? `<div class="pets-grid pets-grid--flat">${data.pets.map(cardHTML).join("")}</div>`
           : `<p class="account__empty">还没有收藏。看到心动的，点卡片上的心。</p>`;
-        bindCardEventsIn(accountBody);
+        bindCardEventsIn(accountBody, data.pets);
       } else if (tab === "mypets") {
         const data = await api("/api/my/pets");
         accountBody.innerHTML = data.pets.length
@@ -847,7 +912,8 @@
     </article>`;
   }
 
-  function bindCardEventsIn(root) {
+  function bindCardEventsIn(root, pets) {
+    bindCommentButtons(root, pets);
     $$("[data-fav]", root).forEach((btn) =>
       btn.addEventListener("click", async () => {
         const id = btn.dataset.fav;
@@ -874,6 +940,403 @@
         spawnParticles(btn);
       })
     );
+  }
+
+  /* ---------------- comments ---------------- */
+  const commentDialog = $("#commentDialog");
+  const commentForm = $("#commentForm");
+  let commentPet = null;
+  let commentPhotos = []; // {file, url}
+
+  function timeAgo(ts) {
+    const diff = Date.now() - ts;
+    const min = Math.floor(diff / 60e3);
+    if (min < 1) return "刚刚";
+    if (min < 60) return `${min} 分钟前`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `${h} 小时前`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return `${d} 天前`;
+    return new Date(ts).toLocaleDateString("zh-CN");
+  }
+
+  function renderThumbs(box, photos, onDel) {
+    box.innerHTML = photos
+      .map(
+        (p, i) => `
+      <div class="photo-thumb">
+        <img src="${esc(p.url)}" alt="图片 ${i + 1}">
+        <button type="button" class="photo-thumb__del" data-del-thumb="${i}" aria-label="删除图片 ${i + 1}">×</button>
+      </div>`
+      )
+      .join("");
+    $$("[data-del-thumb]", box).forEach((b) =>
+      b.addEventListener("click", () => onDel(Number(b.dataset.delThumb)))
+    );
+  }
+
+  function pickImages(e, target, max, done) {
+    const files = [...e.target.files];
+    e.target.value = "";
+    for (const file of files) {
+      if (target.length >= max) {
+        toast(`最多 ${max} 张图片`);
+        break;
+      }
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+        toast("只支持 JPG / PNG / WebP 图片");
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast("单张图片不能超过 5MB");
+        continue;
+      }
+      target.push({ file, url: URL.createObjectURL(file) });
+    }
+    done();
+  }
+
+  async function uploadScoped(scope, id, file, n) {
+    const ticket = await api("/api/upload-ticket", { method: "POST", body: { scope, id, n } });
+    const res = await fetch(ticket.url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+    if (!res.ok) throw new Error("图片上传失败，请重试");
+    return ticket.key;
+  }
+
+  function commentItemHTML(c) {
+    return `
+    <article class="comment">
+      <div class="comment__head">
+        <span class="comment__avatar" aria-hidden="true">${esc((c.author || "?").slice(0, 1))}</span>
+        <span class="comment__author">${esc(c.author)}</span>
+        <span class="comment__time">${esc(timeAgo(c.createdAt))}</span>
+        ${c.mine ? `<button class="comment__del" type="button" data-del-comment="${esc(c.id)}">删除</button>` : ""}
+      </div>
+      ${c.text ? `<p class="comment__text">${esc(c.text)}</p>` : ""}
+      ${c.photos.length ? `<div class="comment__photos">${c.photos.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="留言图片 ${i + 1}" loading="lazy"></a>`).join("")}</div>` : ""}
+    </article>`;
+  }
+
+  function renderCommentPreview() {
+    renderThumbs($("#commentPhotoPreview"), commentPhotos, (i) => {
+      commentPhotos.splice(i, 1);
+      renderCommentPreview();
+    });
+  }
+
+  function renderCommentFormState() {
+    const wrap = $("#commentFormWrap");
+    if (me) {
+      wrap.hidden = true;
+      wrap.innerHTML = "";
+      commentForm.hidden = false;
+    } else {
+      wrap.hidden = false;
+      commentForm.hidden = true;
+      wrap.innerHTML = `<div class="comments__login"><p>登录后就能留言、发图片。</p><button class="btn btn--small" type="button" id="commentLoginBtn">登录 / 注册</button></div>`;
+      $("#commentLoginBtn").addEventListener("click", () => {
+        if (commentDialog.open) commentDialog.close();
+        openAuth("login");
+      });
+    }
+  }
+
+  function setCommentCount(petId, n) {
+    const pet = currentPets.find((p) => p.id === petId);
+    if (pet) pet.commentCount = n;
+    $$(`[data-comment="${CSS.escape(petId)}"]`).forEach((btn) => {
+      const el = $(".cmt-count", btn);
+      if (el) el.textContent = n;
+    });
+  }
+
+  async function loadComments(petId) {
+    const list = $("#commentList");
+    try {
+      const data = await api(`/api/pets/${petId}/comments`);
+      list.innerHTML = data.comments.length
+        ? data.comments.map(commentItemHTML).join("")
+        : `<p class="comments__empty">还没有留言。做第一个跟它说话的人。</p>`;
+      $$("[data-del-comment]", list).forEach((btn) =>
+        btn.addEventListener("click", async () => {
+          if (!confirm("删除这条留言？")) return;
+          try {
+            await api(`/api/pets/${petId}/comments/${btn.dataset.delComment}`, { method: "DELETE" });
+            toast("已删除");
+            loadComments(petId);
+          } catch (e) {
+            toast(e.message);
+          }
+        })
+      );
+      setCommentCount(petId, data.comments.length);
+    } catch (e) {
+      list.innerHTML = `<p class="comments__empty">${esc(e.message)}</p>`;
+    }
+  }
+
+  function openComments(pet) {
+    commentPet = pet;
+    commentPhotos = [];
+    $("#commentPetImg").src = pet.photo || "assets/favicon.svg";
+    $("#commentPetImg").alt = pet.alt || pet.name;
+    $("#commentPetName").textContent = `${pet.name} 的留言`;
+    $("#commentPetMeta").textContent = `${pet.city} · ${pet.species} · ${pet.status === "adopted" ? "已回家" : "等待中"}`;
+    commentForm.reset();
+    $("#commentErr").textContent = "";
+    renderCommentPreview();
+    renderCommentFormState();
+    if (!commentDialog.open) commentDialog.showModal();
+    loadComments(pet.id);
+  }
+
+  if ($("#commentPhotoInput")) {
+    $("#commentPhotoInput").addEventListener("change", (e) =>
+      pickImages(e, commentPhotos, 3, renderCommentPreview)
+    );
+  }
+
+  if (commentForm) {
+    commentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errEl = $("#commentErr");
+      errEl.textContent = "";
+      if (!commentPet) return;
+      const textVal = commentForm.ctext.value.trim();
+      if (!textVal && !commentPhotos.length) {
+        errEl.textContent = "写点什么，或者发张图片";
+        return;
+      }
+      const btn = $("#commentSubmit");
+      btn.disabled = true;
+      btn.textContent = "发布中…";
+      try {
+        const id = crypto.randomUUID();
+        const keys = [];
+        for (let i = 0; i < commentPhotos.length; i++) {
+          keys.push(await uploadScoped("comment", id, commentPhotos[i].file, i));
+        }
+        await api(`/api/pets/${commentPet.id}/comments`, {
+          method: "POST",
+          body: { id, text: textVal, photoKeys: keys }
+        });
+        commentForm.reset();
+        commentPhotos = [];
+        renderCommentPreview();
+        toast("留言已发布");
+        loadComments(commentPet.id);
+      } catch (e2) {
+        errEl.textContent = e2.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "发布留言";
+      }
+    });
+  }
+
+  /* ---------------- wall ---------------- */
+  let wallPhotos = [];
+  let wallPosts = [];
+
+  function renderWallAuthState() {
+    const form = $("#wallForm");
+    const login = $("#wallLogin");
+    if (!form || !login) return;
+    form.hidden = !me;
+    login.hidden = !!me;
+  }
+
+  function renderWallPreview() {
+    renderThumbs($("#wallPhotoPreview"), wallPhotos, (i) => {
+      wallPhotos.splice(i, 1);
+      renderWallPreview();
+    });
+  }
+
+  function postHTML(p) {
+    const count = Math.min(p.photos.length, 3);
+    return `
+    <article class="wall-post">
+      <header class="wall-post__head">
+        <span class="wall-post__author">${esc(p.author)}</span>
+        <span class="wall-post__time">${esc(timeAgo(p.createdAt))}</span>
+        ${p.mine ? `<button class="wall-post__del" type="button" data-del-post="${esc(p.id)}">删除</button>` : ""}
+      </header>
+      ${p.text ? `<p class="wall-post__text">${esc(p.text)}</p>` : ""}
+      ${
+        p.photos.length
+          ? `<div class="wall-post__photos wall-post__photos--${count}">${p.photos
+              .map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="晒图 ${i + 1}" loading="lazy"></a>`)
+              .join("")}</div>`
+          : ""
+      }
+    </article>`;
+  }
+
+  function renderPosts() {
+    const grid = $("#wallGrid");
+    const empty = $("#wallEmpty");
+    grid.innerHTML = wallPosts.map(postHTML).join("");
+    empty.hidden = wallPosts.length > 0;
+    $$("[data-del-post]", grid).forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        if (!confirm("删除这条晒图？")) return;
+        try {
+          await api(`/api/posts/${btn.dataset.delPost}`, { method: "DELETE" });
+          toast("已删除");
+          loadPosts();
+        } catch (e) {
+          toast(e.message);
+        }
+      })
+    );
+  }
+
+  async function loadPosts() {
+    try {
+      const data = await api("/api/posts");
+      wallPosts = data.posts;
+      renderPosts();
+    } catch (e) {
+      $("#wallGrid").innerHTML = `<p class="loading-line">${esc(e.message)}</p>`;
+    }
+  }
+
+  if ($("#wallPhotoInput")) {
+    $("#wallPhotoInput").addEventListener("change", (e) =>
+      pickImages(e, wallPhotos, 3, renderWallPreview)
+    );
+  }
+
+  if ($("#wallForm")) {
+    $("#wallForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!me) {
+        openAuth("login");
+        return;
+      }
+      const errEl = $("#wallErr");
+      errEl.textContent = "";
+      const textVal = $("#wallForm").wtext.value.trim();
+      if (!textVal && !wallPhotos.length) {
+        errEl.textContent = "写一句话，或者发一张图";
+        return;
+      }
+      const btn = $("#wallSubmit");
+      btn.disabled = true;
+      btn.textContent = "发布中…";
+      try {
+        const id = crypto.randomUUID();
+        const keys = [];
+        for (let i = 0; i < wallPhotos.length; i++) {
+          keys.push(await uploadScoped("post", id, wallPhotos[i].file, i));
+        }
+        await api("/api/posts", { method: "POST", body: { id, text: textVal, photoKeys: keys } });
+        $("#wallForm").reset();
+        wallPhotos = [];
+        renderWallPreview();
+        toast("已发布到晒图墙");
+        loadPosts();
+      } catch (e2) {
+        errEl.textContent = e2.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "发布到晒图墙";
+      }
+    });
+  }
+
+  /* ---------------- real stats ---------------- */
+  function setCount(id, value) {
+    const el = $("#" + id);
+    if (!el) return;
+    el.dataset.count = String(value);
+    animateCount(el);
+  }
+
+  function updateHero(pet, stats) {
+    if (!pet) {
+      $("#heroName").textContent = "还没有";
+      $("#heroSub").textContent = "等待中的伙伴";
+      $("#heroQuote").textContent = "“等第一条真实发布。”";
+      $("#heroTags").innerHTML = `<span class="pill">从零开始</span>`;
+      $("#heroStatus").textContent = "暂无数据";
+    } else {
+      $("#heroImg").src = pet.photo || "assets/favicon.svg";
+      $("#heroImg").alt = pet.alt || pet.name;
+      $("#heroName").textContent = pet.name;
+      $("#heroSub").textContent = `${pet.age} · ${pet.species}`;
+      $("#heroQuote").textContent = `“${pet.quote}”`;
+      $("#heroTags").innerHTML =
+        `<span class="pill">${esc(pet.city)}</span>` +
+        (pet.tags || []).map((t) => `<span class="pill">${esc(t)}</span>`).join("");
+      $("#heroStatus").textContent = `等待中 · 第 ${pet.days} 天`;
+    }
+    $("#heroMeta").innerHTML = `<span>${stats.total} 位站内伙伴</span><span class="dot-sep" aria-hidden="true"></span><span>${stats.waiting} 位还在等</span>`;
+  }
+
+  function updateTicker(feed) {
+    const one = feed
+      .map((p) => {
+        const state =
+          p.status === "adopted" ? `已回家 ${p.days} 天` : p.stage === "meeting" ? "正在见面" : `已等待 ${p.days} 天`;
+        return `<span class="ticker__item"><b>${esc(p.city)}</b> · ${esc(p.name)} ${esc(state)}</span>`;
+      })
+      .join("");
+    $("#tickerTrack").innerHTML = one
+      ? one + one.replace(/class="ticker__item"/g, 'class="ticker__item" aria-hidden="true"')
+      : `<span class="ticker__item">还没有动态，先从发布一只开始。</span>`;
+  }
+
+  function applyStats(s) {
+    setCount("statWaiting", s.waiting);
+    setCount("statAdopted", s.adopted);
+    setCount("statAvg", s.avgWaitDays);
+    setCount("statCities", s.cities);
+    $("#statWaitingNote").textContent = s.waiting ? `分布在 ${s.cities} 座城市` : "暂时没有等待中的伙伴";
+    $("#statAdoptedNote").textContent = s.adopted ? "都来自站内真实记录" : "还没有回家记录";
+    $("#statCitiesNote").textContent = s.cities ? "来自站内发布的城市" : "还没有城市记录";
+
+    const max = Math.max(1, ...s.months.map((m) => m.count));
+    $("#chartBars").innerHTML = s.months
+      .map((m, i) => {
+        const h = Math.max(2, Math.round((m.count / max) * 100));
+        const now = i === s.months.length - 1;
+        return `<div class="bar${now ? " bar--now" : ""}" role="img" style="--h:${h}%;--d:${i * 40}ms" tabindex="0" aria-label="${m.label}，${m.count} 只"><span class="bar__tip">${m.count} 只${now ? " · 本月" : ""}</span></div>`;
+      })
+      .join("");
+    $("#chartAxis").innerHTML = s.months.map((m) => `<span>${m.month}</span>`).join("");
+    $("#chartMeta").textContent = `${s.months[0].label} — ${s.months[s.months.length - 1].label} · 单位：只`;
+    $("#chartBox").setAttribute(
+      "aria-label",
+      `过去十二个月每月回家的数量依次为：${s.months.map((m) => `${m.label} ${m.count} 只`).join("、")}。`
+    );
+
+    setCount("ringPct", s.rate);
+    $("#ringSub").textContent = `${s.adopted} / ${s.total}`;
+    $("#ringNote").textContent = s.total
+      ? `站内 ${s.total} 位公开伙伴中，已有 ${s.adopted} 位回家。`
+      : "还没有公开伙伴，数据会从零开始。";
+    const offset = 351.86 * (1 - s.rate / 100);
+    requestAnimationFrame(() => {
+      $("#ringValue").style.strokeDashoffset = String(offset);
+    });
+    $(".ring__svg").setAttribute(
+      "aria-label",
+      s.total ? `站内 ${s.total} 位公开伙伴，已回家 ${s.adopted} 位，占 ${s.rate}%。` : "站内还没有公开伙伴。"
+    );
+
+    updateHero(s.featured, s);
+    updateTicker(s.feed);
+  }
+
+  async function loadStats() {
+    try {
+      const s = await api("/api/stats");
+      applyStats(s);
+    } catch (e) {
+      toast(e.message);
+    }
   }
 
   /* ---------------- reveals & counters ---------------- */
@@ -945,6 +1408,8 @@
     await refreshMe();
     await refreshFavs();
     setView("list");
+    loadStats();
+    loadPosts();
     loadPets();
   })();
 })();
