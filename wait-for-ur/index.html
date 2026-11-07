@@ -251,15 +251,18 @@
           <button class="chip" type="button" data-tag="公寓友好" aria-pressed="false">公寓友好</button>
         </div>
 
-        <div class="view-toggle" role="group" aria-label="切换查看方式">
-          <button class="view-toggle__btn" type="button" data-view="list" aria-pressed="true">
-            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
-            列表
-          </button>
-          <button class="view-toggle__btn" type="button" data-view="map" aria-pressed="false">
-            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
-            地图
-          </button>
+        <div class="pet-tools__right">
+          <button class="btn btn--small pet-tools__match" type="button" id="matchBtn">帮我配对</button>
+          <div class="view-toggle" role="group" aria-label="切换查看方式">
+            <button class="view-toggle__btn" type="button" data-view="list" aria-pressed="true">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+              列表
+            </button>
+            <button class="view-toggle__btn" type="button" data-view="map" aria-pressed="false">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
+              地图
+            </button>
+          </div>
         </div>
       </div>
 
@@ -478,8 +481,10 @@
           <button class="btn btn--small" type="button" data-close-overlay>收起</button>
         </div>
         <div class="account__tabs" role="tablist" aria-label="我的内容">
-          <button class="account__tab" type="button" role="tab" data-atab="favorites" aria-selected="true">我的收藏</button>
+          <button class="account__tab" type="button" role="tab" data-atab="inbox" aria-selected="true">收到的消息</button>
+          <button class="account__tab" type="button" role="tab" data-atab="favorites" aria-selected="false">心愿单</button>
           <button class="account__tab" type="button" role="tab" data-atab="mypets" aria-selected="false">我的发布</button>
+          <button class="account__tab" type="button" role="tab" data-atab="comments" aria-selected="false">我的留言</button>
           <button class="account__tab" type="button" role="tab" data-atab="admin" aria-selected="false" hidden>审核台</button>
         </div>
         <div class="account__body" id="accountBody"></div>
@@ -494,17 +499,6 @@
     <h2 class="foot__title">等一个家，<br>也等一个准备好的人。</h2>
 
     <div class="foot-grid">
-      <div>
-        <h3>示例合作救助站</h3>
-        <ul class="foot-partners">
-          <li>杭州小院</li>
-          <li>成都毛孩子之家</li>
-          <li>上海领养日</li>
-          <li>武汉流浪动物救助站</li>
-          <li>广州阿派</li>
-          <li>北京幸运土猫</li>
-        </ul>
-      </div>
       <div>
         <h3>关于数据</h3>
         <p>站内数字全部来自真实记录：用户发布、审核通过、标记回家，一只一只数出来，不估算、不编造。没有内容时，页面就如实显示为空。</p>
@@ -525,7 +519,7 @@
     </div>
 
     <div class="foot-base">
-      <span>© 2026 Wait For UR · 示例站点</span>
+      <span>© 2026 Wait For UR · 等一个家</span>
       <a href="https://github.com/YouQiaa/wait-for-ur" rel="noopener">源码 / GitHub</a>
     </div>
   </div>
@@ -609,6 +603,94 @@
         <button class="btn btn--coral" id="commentSubmit" type="submit">发布留言</button>
       </div>
     </form>
+  </div>
+</dialog>
+
+<dialog class="comments apply" id="applyDialog" aria-label="申请领养">
+  <div class="comments__box">
+    <header class="comments__head">
+      <div class="comments__pet">
+        <img id="applyPetImg" src="assets/favicon.svg" alt="">
+        <div>
+          <h2 id="applyPetName">申请领养</h2>
+          <p id="applyPetMeta"></p>
+        </div>
+      </div>
+      <form method="dialog" class="auth__close"><button class="auth__x" type="submit" aria-label="关闭">×</button></form>
+    </header>
+
+    <p class="apply__note">申请会直接发到发布者那里，只有 TA 能看到。请写下真实情况。</p>
+
+    <form id="applyForm" class="comments__form">
+      <label class="field"><span>介绍一下自己和照顾计划 *（200 字以内）</span><textarea name="intro" maxlength="200" placeholder="作息、住处、养宠经验，以及为什么想接它回家。"></textarea></label>
+      <label class="field"><span>居住情况</span><input name="housing" type="text" maxlength="60" placeholder="如：自有住房 / 租房已征得房东同意"></label>
+      <label class="field"><span>联系方式 *</span><input name="contact" type="text" maxlength="40" placeholder="微信号 / 手机号，只给发布者看"></label>
+      <p class="form__err" id="applyErr" role="alert"></p>
+      <div class="form__foot">
+        <button class="btn btn--coral" id="applySubmit" type="submit">提交申请</button>
+      </div>
+    </form>
+
+    <div class="apply__done" id="applyDone" hidden>
+      <p>申请已发出。发布者会在「收到的消息」里看到你的申请，并主动联系你。</p>
+      <button class="btn btn--small" type="button" id="applyDoneBtn">知道了</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="comments match" id="matchDialog" aria-label="合拍度匹配">
+  <div class="comments__box">
+    <header class="comments__head">
+      <div class="comments__pet">
+        <div>
+          <h2>合拍度匹配</h2>
+          <p>5 个问题，按生活方式找，不按品种找。</p>
+        </div>
+      </div>
+      <form method="dialog" class="auth__close"><button class="auth__x" type="submit" aria-label="关闭">×</button></form>
+    </header>
+
+    <form id="matchForm" class="match__form">
+      <label class="field"><span>1. 你每天的陪伴时间</span>
+        <select name="q1">
+          <option value="多">大部分时间在家</option>
+          <option value="中">下班后 3–4 小时</option>
+          <option value="少">经常出差，陪伴较少</option>
+        </select>
+      </label>
+      <label class="field"><span>2. 你的住处</span>
+        <select name="q2">
+          <option value="apartment">公寓 / 租房</option>
+          <option value="house">自有住房，空间大</option>
+        </select>
+      </label>
+      <label class="field"><span>3. 家里还有谁</span>
+        <select name="q3">
+          <option value="alone">只有我</option>
+          <option value="family">有家人 / 小孩</option>
+          <option value="pets">已有其他宠物</option>
+        </select>
+      </label>
+      <label class="field"><span>4. 你更喜欢的相处方式</span>
+        <select name="q4">
+          <option value="cuddle">黏在一起</option>
+          <option value="quiet">安静陪着就好</option>
+          <option value="play">一起玩、一起动</option>
+        </select>
+      </label>
+      <label class="field"><span>5. 你的养宠经验</span>
+        <select name="q5">
+          <option value="new">第一次养</option>
+          <option value="some">养过，有经验</option>
+        </select>
+      </label>
+      <p class="form__err" id="matchErr" role="alert"></p>
+      <div class="form__foot">
+        <button class="btn btn--coral" type="submit">看看谁和我合拍</button>
+      </div>
+    </form>
+
+    <div class="match__result" id="matchResult" hidden></div>
   </div>
 </dialog>
 
