@@ -3389,3 +3389,58 @@ svg {
 .chip__del:hover {
   opacity: 1;
 }
+
+/* ---------- 静态展示模式（GitHub Pages 等无后端托管） ---------- */
+
+.staticbar {
+  background: var(--purple-deep);
+  color: var(--on-deep);
+  border-bottom: var(--border);
+}
+.staticbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-block: 10px;
+  flex-wrap: wrap;
+}
+.staticbar__text {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.staticbar__text b {
+  font-weight: 900;
+}
+.staticbar .btn {
+  box-shadow: 2px 2px 0 var(--shadow-color);
+}
+.staticbar.is-pulse {
+  animation: staticPulse 0.9s ease;
+}
+@keyframes staticPulse {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: brightness(1.22);
+  }
+}
+
+.is-disabled,
+.is-disabled:hover,
+.is-disabled:active {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: 2px 2px 0 var(--shadow-color) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staticbar.is-pulse {
+    animation: none;
+  }
+}
