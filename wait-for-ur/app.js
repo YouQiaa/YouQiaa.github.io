@@ -43,7 +43,7 @@
   /* ---------------- state ---------------- */
   let me = null;
   let favIds = new Set();
-  let area = "official"; // official | user | adopted
+  let area = "user"; // user | adopted
   let activeTag = "all";
   let view = "list"; // list | map
   let currentPets = [];
@@ -1256,6 +1256,8 @@
 
   function updateHero(pet, stats) {
     if (!pet) {
+      $("#heroImg").src = "assets/favicon.svg";
+      $("#heroImg").alt = "还没有等待中的伙伴";
       $("#heroName").textContent = "还没有";
       $("#heroSub").textContent = "等待中的伙伴";
       $("#heroQuote").textContent = "“等第一条真实发布。”";
