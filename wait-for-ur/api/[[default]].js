@@ -171,7 +171,9 @@ function validatePetInput(data) {
   const city = text(data.city, 10);
   const quote = text(data.quote, 40);
   const contact = text(data.contact, 40);
-  const tags = Array.isArray(data.tags) ? [...new Set(data.tags.filter((t) => VALID_TAGS.has(t)))].slice(0, 3) : [];
+  const tags = Array.isArray(data.tags)
+    ? [...new Set(data.tags.filter((t) => typeof t === "string").map((t) => t.trim().slice(0, 6)).filter(Boolean))].slice(0, 3)
+    : [];
   const photoKeys = Array.isArray(data.photoKeys) ? data.photoKeys.filter((k) => typeof k === "string").slice(0, 3) : [];
   if (!name) return { error: "给猫咪写个名字吧" };
   if (!age) return { error: "写一下它多大啦" };
