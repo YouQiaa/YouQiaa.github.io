@@ -42,6 +42,7 @@
     <nav class="nav" aria-label="主导航">
       <a href="#data">看情况</a>
       <a href="#pets">找伙伴</a>
+      <a href="#wall">晒图墙</a>
       <a href="#adopt">怎么领养</a>
     </nav>
 
@@ -109,29 +110,29 @@
           <span class="hand hero__hint">先看数据，再决定要不要心动</span>
         </div>
 
-        <p class="hero__meta">
-          <span>示例数据 · 18 座城市</span>
+        <p class="hero__meta" id="heroMeta">
+          <span>数据来自站内真实记录</span>
           <span class="dot-sep" aria-hidden="true"></span>
-          <span>今天，有 5 位还在等</span>
+          <span>正在读取…</span>
         </p>
       </div>
 
       <aside class="hero-card" aria-labelledby="hero-card-name">
         <span class="sticker sticker--purple hero-card__badge">今日主角</span>
         <div class="hero-card__media">
-          <img src="assets/pets/mashu.svg" width="900" height="1080"
+          <img id="heroImg" src="assets/pets/mashu.svg" width="900" height="1080"
                alt="三岁的橘白猫麻薯坐在客厅的奶油色沙发上" fetchpriority="high" decoding="async">
         </div>
         <div class="hero-card__body">
-          <h2 class="hero-card__name" id="hero-card-name">麻薯 <span>三岁 · 橘白</span></h2>
-          <p class="hero-card__quote">“我不太会看镜头，但很会等你在沙发上坐下来。”</p>
-          <div class="hero-card__tags">
+          <h2 class="hero-card__name" id="hero-card-name"><b id="heroName">麻薯</b> <span id="heroSub">3 岁 · 橘白猫</span></h2>
+          <p class="hero-card__quote" id="heroQuote">“我不太会看镜头，但很会等你在沙发上坐下来。”</p>
+          <div class="hero-card__tags" id="heroTags">
             <span class="pill">杭州</span>
             <span class="pill">安静派</span>
             <span class="pill">黏人精</span>
           </div>
           <div class="hero-card__foot">
-            <span class="status status--waiting">等待中 · 第 87 天</span>
+            <span class="status status--waiting" id="heroStatus">等待中</span>
             <a class="textlink" href="#pets">去看看它
               <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
             </a>
@@ -144,22 +145,11 @@
       </aside>
     </div>
 
-    <div class="ticker" aria-label="最近动态">
+    <div class="ticker" aria-label="站内真实动态">
       <div class="ticker__label"><span class="ticker__dot" aria-hidden="true"></span>正在发生</div>
       <div class="ticker__viewport">
-        <div class="ticker__track">
-          <span class="ticker__item"><b>刚刚</b> · 杭州 · 橘座 已回家</span>
-          <span class="ticker__item"><b>3 分钟前</b> · 上海 · 豆瓣 收到一份领养申请</span>
-          <span class="ticker__item"><b>12 分钟前</b> · 武汉 · 阿福 有人来探访</span>
-          <span class="ticker__item"><b>26 分钟前</b> · 广州 · 七喜 进入见面环节</span>
-          <span class="ticker__item"><b>1 小时前</b> · 北京 · 小满 被摸了摸 12 次</span>
-          <span class="ticker__item"><b>昨天</b> · 成都 · 一只三花猫 已回家</span>
-          <span class="ticker__item" aria-hidden="true"><b>刚刚</b> · 杭州 · 橘座 已回家</span>
-          <span class="ticker__item" aria-hidden="true"><b>3 分钟前</b> · 上海 · 豆瓣 收到一份领养申请</span>
-          <span class="ticker__item" aria-hidden="true"><b>12 分钟前</b> · 武汉 · 阿福 有人来探访</span>
-          <span class="ticker__item" aria-hidden="true"><b>26 分钟前</b> · 广州 · 七喜 进入见面环节</span>
-          <span class="ticker__item" aria-hidden="true"><b>1 小时前</b> · 北京 · 小满 被摸了摸 12 次</span>
-          <span class="ticker__item" aria-hidden="true"><b>昨天</b> · 成都 · 一只三花猫 已回家</span>
+        <div class="ticker__track" id="tickerTrack">
+          <span class="ticker__item">正在读取站内数据…</span>
         </div>
       </div>
     </div>
@@ -170,32 +160,32 @@
       <header class="sec-head">
         <span class="eyebrow"><b>01</b> 现在的情况</span>
         <h2>每一个数字背后，<br>都是一个正在空着的位置。</h2>
-        <p class="lead">先把整体情况说清楚，再谈具体的某一只。数据来自合作救助站的联合统计，把它放在情绪之后、相遇之前。</p>
+        <p class="lead">先把整体情况说清楚，再谈具体的某一只。这里的每个数字都从站内真实记录里数出来，没有估算，也没有编造的曲线。</p>
       </header>
 
       <div class="stats">
         <article class="stat stat--coral reveal">
           <span class="stat__label">待领养</span>
-          <div class="stat__number"><span data-count="128">0</span><span class="stat__unit">只</span></div>
-          <p class="stat__note">分布在 18 座城市</p>
+          <div class="stat__number"><span id="statWaiting" data-count="0">0</span><span class="stat__unit">只</span></div>
+          <p class="stat__note" id="statWaitingNote">正在读取…</p>
           <span class="sticker stat__sticker" aria-hidden="true">还在等</span>
         </article>
         <article class="stat stat--lime reveal">
-          <span class="stat__label">本月已回家</span>
-          <div class="stat__number"><span data-count="34">0</span><span class="stat__unit">只</span></div>
-          <p class="stat__note">比上月多 4 只</p>
+          <span class="stat__label">已回家</span>
+          <div class="stat__number"><span id="statAdopted" data-count="0">0</span><span class="stat__unit">只</span></div>
+          <p class="stat__note" id="statAdoptedNote">站内真实记录</p>
           <span class="sticker stat__sticker" aria-hidden="true">好日子</span>
         </article>
         <article class="stat reveal">
           <span class="stat__label">平均等待天数</span>
-          <div class="stat__number"><span data-count="96">0</span><span class="stat__unit">天</span></div>
-          <p class="stat__note">比去年少 11 天</p>
+          <div class="stat__number"><span id="statAvg" data-count="0">0</span><span class="stat__unit">天</span></div>
+          <p class="stat__note" id="statAvgNote">按展示中的伙伴计算</p>
           <span class="sticker sticker--purple stat__sticker" aria-hidden="true">慢一点</span>
         </article>
         <article class="stat reveal">
           <span class="stat__label">覆盖城市</span>
-          <div class="stat__number"><span data-count="18">0</span><span class="stat__unit">座</span></div>
-          <p class="stat__note">今年新增 2 座</p>
+          <div class="stat__number"><span id="statCities" data-count="0">0</span><span class="stat__unit">座</span></div>
+          <p class="stat__note" id="statCitiesNote">来自站内发布</p>
           <span class="sticker stat__sticker" aria-hidden="true">还在扩</span>
         </article>
       </div>
@@ -204,55 +194,39 @@
         <article class="panel chart-panel reveal">
           <header class="panel__head">
             <h3>过去 12 个月，回家的数量</h3>
-            <span class="panel__meta">2025.12 — 2026.11 · 单位：只</span>
+            <span class="panel__meta" id="chartMeta">按站内回家时间统计 · 单位：只</span>
           </header>
 
-          <div class="chart" role="group" aria-label="过去十二个月每月回家的数量依次为：18、22、15、27、31、24、36、29、41、33、38、34 只。">
-            <div class="chart__bars">
-              <div class="bar" role="img" style="--h:44%;--d:0ms" tabindex="0" aria-label="2025 年 12 月，18 只"><span class="bar__tip">18 只</span></div>
-              <div class="bar" role="img" style="--h:54%;--d:40ms" tabindex="0" aria-label="2026 年 1 月，22 只"><span class="bar__tip">22 只</span></div>
-              <div class="bar" role="img" style="--h:37%;--d:80ms" tabindex="0" aria-label="2026 年 2 月，15 只"><span class="bar__tip">15 只</span></div>
-              <div class="bar" role="img" style="--h:66%;--d:120ms" tabindex="0" aria-label="2026 年 3 月，27 只"><span class="bar__tip">27 只</span></div>
-              <div class="bar" role="img" style="--h:76%;--d:160ms" tabindex="0" aria-label="2026 年 4 月，31 只"><span class="bar__tip">31 只</span></div>
-              <div class="bar" role="img" style="--h:59%;--d:200ms" tabindex="0" aria-label="2026 年 5 月，24 只"><span class="bar__tip">24 只</span></div>
-              <div class="bar" role="img" style="--h:88%;--d:240ms" tabindex="0" aria-label="2026 年 6 月，36 只"><span class="bar__tip">36 只</span></div>
-              <div class="bar" role="img" style="--h:71%;--d:280ms" tabindex="0" aria-label="2026 年 7 月，29 只"><span class="bar__tip">29 只</span></div>
-              <div class="bar" role="img" style="--h:100%;--d:320ms" tabindex="0" aria-label="2026 年 8 月，41 只"><span class="bar__tip">41 只</span></div>
-              <div class="bar" role="img" style="--h:80%;--d:360ms" tabindex="0" aria-label="2026 年 9 月，33 只"><span class="bar__tip">33 只</span></div>
-              <div class="bar" role="img" style="--h:93%;--d:400ms" tabindex="0" aria-label="2026 年 10 月，38 只"><span class="bar__tip">38 只</span></div>
-              <div class="bar bar--now" role="img" style="--h:83%;--d:440ms" tabindex="0" aria-label="2026 年 11 月（本月），34 只"><span class="bar__tip">34 只 · 本月</span></div>
-            </div>
-            <div class="chart__axis" aria-hidden="true">
-              <span>12</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
-              <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span>
-            </div>
+          <div class="chart" id="chartBox" role="group" aria-label="过去十二个月每月回家的数量，正在读取。">
+            <div class="chart__bars" id="chartBars"></div>
+            <div class="chart__axis" id="chartAxis" aria-hidden="true"></div>
           </div>
 
-          <p class="panel__foot">方块越高，那个月回家的孩子越多。最后一格是本月。</p>
+          <p class="panel__foot">方块越高，那个月回家的孩子越多。全部按实际「已回家」时间落格。</p>
         </article>
 
         <article class="panel ring-panel reveal">
           <header class="panel__head">
-            <h3>本月回家进度</h3>
-            <span class="sticker sticker--purple panel__sticker" aria-hidden="true">这个月</span>
+            <h3>回家的比例</h3>
+            <span class="sticker sticker--purple panel__sticker" aria-hidden="true">站内</span>
           </header>
           <div class="ring">
-            <svg class="ring__svg" viewBox="0 0 140 140" role="img" aria-label="本月已回家 34 只，目标 45 只，完成约 76%。">
+            <svg class="ring__svg" viewBox="0 0 140 140" role="img" aria-label="站内伙伴的回家比例，正在读取。">
               <circle class="ring__track" cx="70" cy="70" r="56"></circle>
-              <circle class="ring__value" cx="70" cy="70" r="56"></circle>
+              <circle class="ring__value" cx="70" cy="70" r="56" id="ringValue"></circle>
             </svg>
             <div class="ring__center" aria-hidden="true">
-              <span class="ring__pct"><span data-count="76">0</span>%</span>
-              <span class="ring__sub">34 / 45</span>
+              <span class="ring__pct"><span id="ringPct" data-count="0">0</span>%</span>
+              <span class="ring__sub" id="ringSub">0 / 0</span>
             </div>
           </div>
-          <p class="ring-panel__note">距离本月目标，还差 <b>11</b> 个位置。</p>
+          <p class="ring-panel__note" id="ringNote">已回家的伙伴，占站内全部公开伙伴的比例。</p>
         </article>
       </div>
 
       <p class="source-note">
-        <span class="tag tag--lime">示例数据</span>
-        数字用于展示站点结构与可视化方式，正式上线前将接入救助站联合统计接口。口径：猫、狗、兔等伴侣动物，由 18 家救助站按月汇总。更新于 2026 年 11 月 6 日。
+        <span class="tag tag--lime">真实数据</span>
+        数字来自站内发布与审核记录，随发布、回家实时变化。官方伙伴为示例数据，其余全部由真实用户发布。更新于本月。
       </p>
     </div>
   </section>
@@ -334,10 +308,46 @@
     </div>
   </section>
 
+  <section class="section wall" id="wall">
+    <div class="wrap">
+      <header class="sec-head">
+        <span class="eyebrow"><b>03</b> 晒图墙</span>
+        <h2>它们回家以后，<br>把日子晒出来。</h2>
+        <p class="lead">真实的人、真实的照片。发一张图，写一句话，给还在等的那只一点信心。这里没有编造的故事。</p>
+      </header>
+
+      <div class="wall-compose" id="wallCompose">
+        <form id="wallForm" class="wall-form" hidden>
+          <label class="field"><span>写一句话（300 字以内）</span><textarea name="wtext" maxlength="300" placeholder="它今天做了什么？或者你想对还在等的那只说点什么。"></textarea></label>
+          <div class="photo-row">
+            <label class="photo-add">
+              <input id="wallPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+              <span aria-hidden="true">+ 发图片</span>
+            </label>
+            <div class="photo-preview" id="wallPhotoPreview"></div>
+          </div>
+          <p class="form__err" id="wallErr" role="alert"></p>
+          <div class="form__foot">
+            <button class="btn btn--coral" id="wallSubmit" type="submit">发布到晒图墙</button>
+          </div>
+        </form>
+        <div class="wall-login" id="wallLogin">
+          <p>登录后就能在这里晒图、写话。</p>
+          <button class="btn btn--small" type="button" data-auth-entry>登录 / 注册</button>
+        </div>
+      </div>
+
+      <div class="wall-grid" id="wallGrid">
+        <p class="loading-line">正在加载…</p>
+      </div>
+      <p class="empty" id="wallEmpty" hidden>晒图墙还是空的。发第一条，让它从零开始长出来。</p>
+    </div>
+  </section>
+
   <section class="section adopt" id="adopt">
     <div class="wrap">
       <header class="sec-head">
-        <span class="eyebrow"><b>03</b> 怎么领养</span>
+        <span class="eyebrow"><b>04</b> 怎么领养</span>
         <h2>四步，不快，<br>但每一步都算数。</h2>
         <p class="lead">领养不是把它带回家就结束了。下面这条线，是它从「等待」到「回家」的完整路径。</p>
       </header>
@@ -502,7 +512,7 @@
       </div>
       <div>
         <h3>关于数据</h3>
-        <p>本站当前全部为示例数据，用于展示「先看整体、再遇见具体」的叙事结构，不代表任何机构的真实统计。正式版本将接入救助站联合统计接口，字段包含编号、昵称、城市、性格标签、状态、等待天数、救助站、照片与一句话自述。</p>
+        <p>站内数字全部来自真实记录：用户发布、审核通过、标记回家，一只一只数出来，不估算、不编造。官方伙伴为示例数据，其余内容由真实用户发布。没有内容时，页面就如实显示为空。</p>
       </div>
       <div>
         <h3>关于无障碍</h3>
@@ -557,10 +567,52 @@
     <form id="regForm" class="auth__form" hidden>
       <label class="field"><span>昵称</span><input name="nickname" type="text" maxlength="12" required placeholder="怎么称呼你"></label>
       <label class="field"><span>邮箱</span><input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label>
+      <div class="field"><span>邮箱验证码</span>
+        <div class="code-row">
+          <input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="6 位数字">
+          <button class="code-row__btn" id="sendCodeBtn" type="button">发送验证码</button>
+        </div>
+      </div>
       <label class="field"><span>密码（至少 8 位）</span><input name="password" type="password" minlength="8" required autocomplete="new-password" placeholder="至少 8 位"></label>
       <p class="form__err" id="regErr" role="alert"></p>
       <button class="btn btn--coral auth__submit" type="submit">注册并登录</button>
       <p class="auth__tip">注册即同意：发布信息必须真实，经人工审核后公开；虚假发布将被永久封号。</p>
+    </form>
+  </div>
+</dialog>
+
+<dialog class="comments" id="commentDialog" aria-label="猫咪留言">
+  <div class="comments__box">
+    <header class="comments__head">
+      <div class="comments__pet">
+        <img id="commentPetImg" src="assets/favicon.svg" alt="">
+        <div>
+          <h2 id="commentPetName">留言</h2>
+          <p id="commentPetMeta"></p>
+        </div>
+      </div>
+      <form method="dialog" class="auth__close"><button class="auth__x" type="submit" aria-label="关闭">×</button></form>
+    </header>
+
+    <div class="comments__list" id="commentList">
+      <p class="comments__empty">正在加载留言…</p>
+    </div>
+
+    <div class="comments__formwrap" id="commentFormWrap"></div>
+
+    <form id="commentForm" class="comments__form" hidden>
+      <label class="field"><span>说点什么（120 字以内）</span><textarea name="ctext" maxlength="120" placeholder="写一句给它的鼓励，或者分享你的领养经验。"></textarea></label>
+      <div class="photo-row">
+        <label class="photo-add photo-add--small">
+          <input id="commentPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+          <span aria-hidden="true">+ 图片</span>
+        </label>
+        <div class="photo-preview" id="commentPhotoPreview"></div>
+      </div>
+      <p class="form__err" id="commentErr" role="alert"></p>
+      <div class="form__foot">
+        <button class="btn btn--coral" id="commentSubmit" type="submit">发布留言</button>
+      </div>
     </form>
   </div>
 </dialog>
