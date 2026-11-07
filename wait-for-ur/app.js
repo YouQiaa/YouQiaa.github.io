@@ -370,7 +370,7 @@
       </figure>
       <div class="pet-card__body">
         <h3 class="pet-card__name">${esc(pet.name)} <span>${esc(pet.species)} · ${esc(pet.age)}</span></h3>
-        <p class="pet-card__quote">"${esc(pet.quote)}"</p>
+        <p class="pet-card__quote">“${esc(pet.quote)}”</p>
         <div class="pet-card__meta">
           <span class="pill">${esc(pet.city)}</span>
           ${(pet.tags || []).map((t) => `<span class="tag tag--lime">${esc(t)}</span>`).join("")}
@@ -563,7 +563,7 @@
       <figure class="map-info__photo"><img src="${esc(pet.photo)}" alt="${esc(pet.alt)}"></figure>
       <div class="map-info__body">
         <h4>${esc(pet.name)} <span>${esc(pet.city)} · 已等 ${pet.days} 天</span></h4>
-        <p>"${esc(pet.quote)}"</p>
+        <p>“${esc(pet.quote)}”</p>
         <div class="map-info__tags">${(pet.tags || []).map((t) => `<span class="tag tag--lime">${esc(t)}</span>`).join("")}</div>
         <div class="map-info__actions">
           <button class="btn btn--small btn--ink" type="button" data-goto-card="${esc(pet.id)}">到它的卡片</button>
@@ -1114,7 +1114,7 @@
       <div class="my-pet__main">
         <h4>${esc(pet.name)} <span>${esc(pet.city)} · ${esc(pet.species)}</span></h4>
         <p class="my-pet__status">发布者：${esc(pet.ownerEmail)} · 联系方式：${esc(pet.contact || "未填")}</p>
-        <p class="my-pet__quote">"${esc(pet.quote)}"</p>
+        <p class="my-pet__quote">“${esc(pet.quote)}”</p>
         <div class="my-pet__actions">
           <button class="btn btn--small btn--lime" type="button" data-approve="${esc(pet.id)}">通过</button>
           <button class="btn btn--small" type="button" data-reject="${esc(pet.id)}">拒绝</button>
@@ -1624,7 +1624,7 @@
       $("#heroImg").alt = "还没有等待中的伙伴";
       $("#heroName").textContent = "还没有";
       $("#heroSub").textContent = "等待中的伙伴";
-      $("#heroQuote").textContent = ""等第一条真实发布。"";
+      $("#heroQuote").textContent = "“等第一条真实发布。”";
       $("#heroTags").innerHTML = `<span class="pill">从零开始</span>`;
       $("#heroStatus").textContent = "暂无数据";
     } else {
@@ -1632,7 +1632,7 @@
       $("#heroImg").alt = pet.alt || pet.name;
       $("#heroName").textContent = pet.name;
       $("#heroSub").textContent = `${pet.age} · ${pet.species}`;
-      $("#heroQuote").textContent = `"${pet.quote}"`;
+      $("#heroQuote").textContent = `“${pet.quote}”`;
       $("#heroTags").innerHTML =
         `<span class="pill">${esc(pet.city)}</span>` +
         (pet.tags || []).map((t) => `<span class="pill">${esc(t)}</span>`).join("");
@@ -1685,3 +1685,194 @@
       : "还没有公开伙伴，数据会从零开始。";
     const offset = 351.86 * (1 - s.rate / 100);
     requestAnimationFrame(() => {
+      $("#ringValue").style.strokeDashoffset = String(offset);
+    });
+    $(".ring__svg").setAttribute(
+      "aria-label",
+      s.total ? `站内 ${s.total} 位公开伙伴，已回家 ${s.adopted} 位，占 ${s.rate}%。` : "站内还没有公开伙伴。"
+    );
+
+    updateHero(s.featured, s);
+    updateTicker(s.feed);
+  }
+
+  async function loadStats() {
+    try {
+      const s = await api("/api/stats");
+      applyStats(s);
+    } catch (e) {
+      toast(e.message);
+    }
+  }
+
+  /* ---------------- reveals & counters ---------------- */
+  function animateCount(el) {
+    const target = Number(el.dataset.count);
+    if (reduced.matches) {
+      el.textContent = target;
+      return;
+    }
+    const dur = 1100;
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min(1, (now - start) / dur);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  if ("IntersectionObserver" in window) {
+    const revealIO = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            en.target.classList.add("is-in");
+            revealIO.unobserve(en.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    $$(".reveal").forEach((el) => revealIO.observe(el));
+
+    const chart = $(".chart");
+    if (chart) {
+      const chartIO = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            chart.classList.add("is-in");
+            chartIO.disconnect();
+          }
+        },
+        { threshold: 0.4 }
+      );
+      chartIO.observe(chart);
+    }
+
+    const countIO = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            animateCount(en.target);
+            countIO.unobserve(en.target);
+          }
+        });
+      },
+      { threshold: 0.6 }
+    );
+    $$("[data-count]").forEach((el) => countIO.observe(el));
+  } else {
+    $$(".reveal").forEach((el) => el.classList.add("is-in"));
+    const chart = $(".chart");
+    if (chart) chart.classList.add("is-in");
+    $$("[data-count]").forEach(animateCount);
+  }
+
+  /* ---------------- match quiz ---------------- */
+  const matchDialog = $("#matchDialog");
+  const matchForm = $("#matchForm");
+  const MATCH_RULES = {
+    q1: { 多: ["黏人精", "社牛"], 中: ["安静派", "公寓友好"], 少: ["安静派", "适合新手"] },
+    q2: { apartment: ["公寓友好"], house: ["运动型", "社牛"] },
+    q3: { alone: ["黏人精", "安静派"], family: ["社牛", "适合新手"], pets: ["社牛", "运动型"] },
+    q4: { cuddle: ["黏人精"], quiet: ["安静派"], play: ["运动型", "社牛"] },
+    q5: { new: ["适合新手", "安静派"], some: ["运动型", "黏人精"] }
+  };
+
+  async function runMatch() {
+    const wants = new Set();
+    ["q1", "q2", "q3", "q4", "q5"].forEach((k) => {
+      const v = matchForm[k].value;
+      (MATCH_RULES[k][v] || []).forEach((t) => wants.add(t));
+    });
+    const resEl = $("#matchResult");
+    resEl.hidden = false;
+    resEl.innerHTML = `<p class="loading-line">正在找最合拍的伙伴…</p>`;
+    try {
+      const data = await api("/api/pets?area=user");
+      const waiting = data.pets.filter((p) => p.status === "approved");
+      if (!waiting.length) {
+        resEl.innerHTML = `<p class="account__empty">现在还没有待领养的伙伴。等第一条真实发布出现，再来测一次。</p>`;
+        return;
+      }
+      const scored = waiting
+        .map((p) => ({ pet: p, score: (p.tags || []).reduce((s, t) => s + (wants.has(t) ? 2 : 0), 0) }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+      resEl.innerHTML = `
+        <p class="match__lead">按你的生活方式，最合拍的是：</p>
+        <div class="match__cards">
+          ${scored
+            .map(
+              ({ pet, score }) => `
+          <article class="match-card" data-jump="${esc(pet.id)}">
+            <img src="${esc(pet.photo || "assets/favicon.svg")}" alt="${esc(pet.alt || pet.name)}" loading="lazy">
+            <div class="match-card__body">
+              <h3>${esc(pet.name)} <span>${esc(pet.species)} · ${esc(pet.age)}</span></h3>
+              <p>${esc(pet.quote)}</p>
+              <div class="match-card__tags">${(pet.tags || [])
+                .map((t) => `<span class="tag ${wants.has(t) ? "tag--lime" : ""}">${esc(t)}</span>`)
+                .join("")}</div>
+              <span class="match-card__score">合拍度 ${Math.min(100, 40 + score * 10)}%</span>
+            </div>
+          </article>`
+            )
+            .join("")}
+        </div>
+        <p class="match__note">点卡片跳到它所在的位置，展开详情或留言。</p>`;
+      $$("[data-jump]", resEl).forEach((card) =>
+        card.addEventListener("click", () => jumpToPet(card.dataset.jump))
+      );
+    } catch (e) {
+      resEl.innerHTML = `<p class="account__empty">${esc(e.message)}</p>`;
+    }
+  }
+
+  async function jumpToPet(id) {
+    if (matchDialog) matchDialog.close();
+    activeTag = "all";
+    $$(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.tag === "all")));
+    if (area !== "user") {
+      setArea("user");
+      await new Promise((r) => setTimeout(r, 120));
+    } else {
+      await loadPets();
+    }
+    const card = $(`.pet-card[data-id="${CSS.escape(id)}"]`);
+    if (!card) {
+      toast("它可能已经不在列表里了");
+      return;
+    }
+    card.scrollIntoView({ behavior: reduced.matches ? "auto" : "smooth", block: "center" });
+    const d = $("details", card);
+    if (d) d.open = true;
+    card.classList.add("is-flash");
+    setTimeout(() => card.classList.remove("is-flash"), 1400);
+  }
+
+  if ($("#matchBtn") && matchDialog) {
+    $("#matchBtn").addEventListener("click", () => {
+      $("#matchResult").hidden = true;
+      matchForm.reset();
+      $("#matchErr").textContent = "";
+      matchDialog.showModal();
+    });
+  }
+  if (matchForm) {
+    matchForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      runMatch();
+    });
+  }
+
+  /* ---------------- boot ---------------- */
+  (async () => {
+    await refreshMe();
+    await refreshFavs();
+    setView("list");
+    loadStats();
+    loadPosts();
+    loadPets();
+  })();
+})();
