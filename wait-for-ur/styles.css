@@ -3343,3 +3343,49 @@ svg {
     height: 80px;
   }
 }
+
+/* ---------- custom tags ---------- */
+
+.tag-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.tag-custom input {
+  flex: 1 1 160px;
+  min-width: 120px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.tag-custom input:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+.tag-custom__hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+.chip--custom {
+  background: var(--paper);
+  border-style: dashed;
+}
+.chip--custom[aria-pressed="true"] {
+  background: var(--coral);
+  color: #fff;
+  border-style: solid;
+}
+.chip__del {
+  display: inline-block;
+  margin-left: 4px;
+  font-weight: 900;
+  opacity: 0.7;
+}
+.chip__del:hover {
+  opacity: 1;
+}
