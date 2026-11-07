@@ -154,7 +154,11 @@ async function handleListPets(request, url) {
     list = pets.filter((p) => p.source === "official" && p.status === "approved");
   }
   list.sort((a, b) => a.createdAt - b.createdAt);
-  return json({ ok: true, pets: list.map((p) => publicPet(p, { viewerLoggedIn: !!me })) });
+  const counts = await commentCounts();
+  return json({
+    ok: true,
+    pets: list.map((p) => ({ ...publicPet(p, { viewerLoggedIn: !!me }), commentCount: counts[p.id] || 0 }))
+  });
 }
 
 function validatePetInput(data) {
@@ -266,10 +270,17 @@ async function handleDeletePet(request, me, id) {
 async function handleUploadTicket(request, me) {
   const data = await body(request);
   if (!data) return err(400, "请求格式错误");
-  const petId = text(data.petId, 48);
   const n = Number(data.n);
-  if (!ID_RE.test(petId) || !(n >= 0 && n <= 2)) return err(400, "参数不正确");
-  const key = `photos/${petId}-${n}`;
+  let key;
+  if (data.scope === "comment" || data.scope === "post") {
+    const id = text(data.id, 48);
+    if (!ID_RE.test(id) || !(n >= 0 && n <= 2)) return err(400, "参数不正确");
+    key = `photos/${data.scope === "comment" ? "c" : "w"}-${id}-${n}`;
+  } else {
+    const petId = text(data.petId, 48);
+    if (!ID_RE.test(petId) || !(n >= 0 && n <= 2)) return err(400, "参数不正确");
+    key = `photos/${petId}-${n}`;
+  }
   let ticket;
   try {
     ticket = await blob.createUploadUrl(key, { onlyIfNew: true });
@@ -341,6 +352,184 @@ async function handleMyPets(request, me) {
   const mine = pets.filter((p) => p.ownerEmail === me.email);
   mine.sort((a, b) => b.createdAt - a.createdAt);
   return json({ ok: true, pets: mine.map((p) => ({ ...publicPet(p, { viewerLoggedIn: true }), rejectReason: p.rejectReason })) });
+}
+
+/* ---------------- comments ---------------- */
+
+function commentKey(petId, id) {
+  return `comments/${petId}/${id}.json`;
+}
+
+async function commentCounts() {
+  try {
+    const keys = await listKeys("comments/");
+    const map = {};
+    for (const k of keys) {
+      const seg = k.split("/");
+      if (seg.length >= 3 && seg[2]) map[seg[1]] = (map[seg[1]] || 0) + 1;
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+function publicComment(c, me) {
+  return {
+    id: c.id,
+    author: c.authorName,
+    text: c.text,
+    photos: (c.photoKeys || []).map((k) => `/api/photos/${k}`),
+    createdAt: c.createdAt,
+    mine: !!me && (me.email === c.authorEmail || me.admin)
+  };
+}
+
+async function handleListComments(request, petId) {
+  const pet = await getPet(petId);
+  if (!pet || pet.status === "rejected" || pet.status === "pending") return err(404, "没有找到这只猫咪");
+  const me = await getSessionUser(request);
+  const items = await listJSONSafe(`comments/${petId}/`);
+  items.sort((a, b) => a.createdAt - b.createdAt);
+  return json({ ok: true, comments: items.map((c) => publicComment(c, me)) });
+}
+
+async function handleCreateComment(request, me, petId) {
+  const pet = await getPet(petId);
+  if (!pet || pet.status === "rejected" || pet.status === "pending") return err(404, "没有找到这只猫咪");
+  if (!rateLimit(clientKey(request, "comment"), 20)) return err(429, "留言太频繁，歇一会儿再发");
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const id = text(data.id, 48);
+  if (!ID_RE.test(id)) return err(400, "参数不正确");
+  if (await getJSON(commentKey(petId, id))) return err(409, "请重新提交一次");
+  const content = text(data.text, 120);
+  const photoKeys = Array.isArray(data.photoKeys) ? data.photoKeys.filter((k) => typeof k === "string").slice(0, 3) : [];
+  if (!content && !photoKeys.length) return err(400, "写点什么，或者发张图片");
+  if (!photoKeys.every((k) => k.startsWith(`photos/c-${id}-`))) return err(400, "图片与留言不匹配");
+  const c = {
+    id,
+    petId,
+    authorEmail: me.email,
+    authorName: me.nickname,
+    text: content,
+    photoKeys,
+    createdAt: Date.now()
+  };
+  await setJSON(commentKey(petId, id), c);
+  return json({ ok: true, comment: publicComment(c, me) });
+}
+
+async function handleDeleteComment(request, me, petId, id) {
+  const key = commentKey(petId, id);
+  const c = await getJSON(key);
+  if (!c) return err(404, "留言不存在");
+  if (c.authorEmail !== me.email && !me.admin) return err(403, "只能删除自己的留言");
+  for (const k of c.photoKeys || []) await del(k);
+  await del(key);
+  return json({ ok: true });
+}
+
+/* ---------------- wall posts ---------------- */
+
+function publicPost(p, me) {
+  return {
+    id: p.id,
+    author: p.authorName,
+    text: p.text,
+    photos: (p.photoKeys || []).map((k) => `/api/photos/${k}`),
+    createdAt: p.createdAt,
+    mine: !!me && (me.email === p.authorEmail || me.admin)
+  };
+}
+
+async function handleListPosts(request) {
+  const me = await getSessionUser(request);
+  const items = await listJSONSafe("posts/");
+  items.sort((a, b) => b.createdAt - a.createdAt);
+  return json({ ok: true, posts: items.map((p) => publicPost(p, me)) });
+}
+
+async function handleCreatePost(request, me) {
+  if (!rateLimit(clientKey(request, "post"), 10)) return err(429, "发得太频繁，稍后再试");
+  const data = await body(request);
+  if (!data) return err(400, "请求格式错误");
+  const id = text(data.id, 48);
+  if (!ID_RE.test(id)) return err(400, "参数不正确");
+  if (await getJSON(`posts/${id}.json`)) return err(409, "请重新提交一次");
+  const content = text(data.text, 300);
+  const photoKeys = Array.isArray(data.photoKeys) ? data.photoKeys.filter((k) => typeof k === "string").slice(0, 3) : [];
+  if (!content && !photoKeys.length) return err(400, "写一句话，或者发一张图");
+  if (!photoKeys.every((k) => k.startsWith(`photos/w-${id}-`))) return err(400, "图片与内容不匹配");
+  const p = {
+    id,
+    authorEmail: me.email,
+    authorName: me.nickname,
+    text: content,
+    photoKeys,
+    createdAt: Date.now()
+  };
+  await setJSON(`posts/${id}.json`, p);
+  return json({ ok: true, post: publicPost(p, me) });
+}
+
+async function handleDeletePost(request, me, id) {
+  const key = `posts/${id}.json`;
+  const p = await getJSON(key);
+  if (!p) return err(404, "这条动态不存在");
+  if (p.authorEmail !== me.email && !me.admin) return err(403, "只能删除自己发布的内容");
+  for (const k of p.photoKeys || []) await del(k);
+  await del(key);
+  return json({ ok: true });
+}
+
+/* ---------------- stats ---------------- */
+
+async function handleStats() {
+  const pets = await allPets();
+  const active = pets.filter((p) => p.status === "approved" || p.status === "adopted");
+  const waiting = active.filter((p) => p.status === "approved");
+  const adopted = active.filter((p) => p.status === "adopted");
+  const cities = new Set(active.map((p) => p.city));
+  const now = Date.now();
+  const DAY = 86400e3;
+  const avgWaitDays = waiting.length
+    ? Math.round(waiting.reduce((sum, p) => sum + Math.max(0, Math.floor((now - p.createdAt) / DAY)), 0) / waiting.length)
+    : 0;
+
+  const months = [];
+  const base = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const start = new Date(base.getFullYear(), base.getMonth() - i, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    const list = adopted.filter((p) => p.adoptedAt && p.adoptedAt >= start.getTime() && p.adoptedAt < end.getTime());
+    months.push({
+      label: `${start.getFullYear()}.${start.getMonth() + 1}`,
+      month: start.getMonth() + 1,
+      count: list.length
+    });
+  }
+
+  const total = active.length;
+  const rate = total ? Math.round((adopted.length / total) * 100) : 0;
+  const featured = waiting[0] ? publicPet(waiting[0], { viewerLoggedIn: false }) : null;
+
+  return json({
+    ok: true,
+    waiting: waiting.length,
+    adopted: adopted.length,
+    cities: cities.size,
+    avgWaitDays,
+    months,
+    rate,
+    total,
+    featured,
+    feed: active
+      .slice()
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 8)
+      .map((p) => ({ id: p.id, name: p.name, city: p.city, status: p.status, stage: p.stage, days: publicPet(p).days }))
+  });
 }
 
 /* ---------------- admin ---------------- */
@@ -437,7 +626,37 @@ async function handle(request) {
       if (method === "GET" && seg[1] === "me") return await handleMe(request);
     }
 
+    if (seg[0] === "stats" && method === "GET") return await handleStats();
+
+    if (seg[0] === "posts") {
+      if (!seg[1] && method === "GET") return await handleListPosts(request);
+      if (!seg[1] && method === "POST") {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录，再晒图");
+        return await handleCreatePost(request, me);
+      }
+      if (seg[1] && method === "DELETE") {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录");
+        return await handleDeletePost(request, me, seg[1]);
+      }
+    }
+
     if (seg[0] === "photos" && seg[1] && method === "GET") return await handlePhoto(request, seg.slice(1).join("/"));
+
+    if (seg[0] === "pets" && seg[1] && seg[2] === "comments") {
+      if (method === "GET" && !seg[3]) return await handleListComments(request, seg[1]);
+      if (method === "POST" && !seg[3]) {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录，再留言");
+        return await handleCreateComment(request, me, seg[1]);
+      }
+      if (method === "DELETE" && seg[3]) {
+        const me = await getSessionUser(request);
+        if (!me) return err(401, "先登录");
+        return await handleDeleteComment(request, me, seg[1], seg[3]);
+      }
+    }
 
     if (seg[0] === "pets" && !seg[1]) {
       if (method === "GET") return await handleListPets(request, url);
