@@ -1939,11 +1939,6 @@
 
   /* ---------------- boot ---------------- */
   (async () => {
-    if (!(await detectApi())) {
-      enterStaticMode();
-      setView("list");
-      return;
-    }
     await refreshMe();
     await refreshFavs();
     setView("list");
